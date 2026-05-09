@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Rahnuma SABRE",
+    "slug": "rahnuma-sabre",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a1628"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rahnuma.sabre"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a1628"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.rahnuma.sabre"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e9c2db9b-a1c3-4a77-bf80-f600572bbd49"
+      }
+    },
+    "owner": "cosmicnoob80"
+  }
+}
