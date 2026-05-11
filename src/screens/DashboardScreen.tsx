@@ -2,12 +2,13 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getHoldings, getTotalIncome, getExpenseTotalByMonth, getSetting } from '../database/db';
 import { Holding } from '../types';
 import { calculateFIRE, formatPKR } from '../utils/calculators';
 
 export default function DashboardScreen() {
+  const navigation = useNavigation<any>();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [monthlyExpenses, setMonthlyExpenses] = useState(0);
@@ -110,13 +111,13 @@ export default function DashboardScreen() {
       {/* Quick Actions */}
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Quick Links</Text>
-        <TouchableOpacity style={styles.quickBtn}>
+        <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Portfolio')}>
           <Text style={styles.quickBtnText}>📊 Portfolio</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickBtn}>
+        <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Budget')}>
           <Text style={styles.quickBtnText}>💰 Budget</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickBtn}>
+        <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Calculators')}>
           <Text style={styles.quickBtnText}>🧮 Calculators</Text>
         </TouchableOpacity>
       </View>

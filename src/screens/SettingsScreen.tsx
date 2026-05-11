@@ -6,6 +6,14 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { getSetting, setSetting, hasPin, setPin } from '../database/db';
 import { formatPKR } from '../utils/calculators';
+import { getApiKey, setApiKey as setSecureApiKey, getApiModel, setApiModel } from '../utils/secureStorage';
+import { exportAllData } from '../services/dataService';
+
+const MODELS = [
+  { label: 'DeepSeek V4 Flash', value: 'deepseek/deepseek-v4-flash' },
+  { label: 'Kimi K2.6', value: 'kimi/kimi-k2.6' },
+  { label: 'GLM 5.1', value: 'glm/glm-5-1' },
+];
 
 export default function SettingsScreen() {
   const [cashAmount, setCashAmount] = useState('');
@@ -14,6 +22,9 @@ export default function SettingsScreen() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [pin, setPinVal] = useState('');
   const [pinExists, setPinExists] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('deepseek/deepseek-v4-flash');
 
   const load = useCallback(async () => {
     const c = await getSetting('cash');
@@ -27,7 +38,15 @@ export default function SettingsScreen() {
     setPinExists(await hasPin());
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const loadSettings = useCallback(async () => {
+    const key = await getApiKey();
+    setApiKeySaved(!!key);
+    setApiKeyInput(key || '');
+    const model = await getApiModel();
+    if (model) setSelectedModel(model);
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); loadSettings(); }, [load, loadSettings]));
 
   const saveSetting = async (key: string, val: string, label: string) => {
     const n = parseFloat(val);
@@ -42,6 +61,25 @@ export default function SettingsScreen() {
     setPinExists(true);
     setPinVal('');
     Alert.alert('PIN set!');
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) { Alert.alert('Enter an API key'); return; }
+    await setSecureApiKey(apiKeyInput.trim());
+    setApiKeySaved(true);
+    Alert.alert('API key saved!');
+  };
+
+  const handleClearApiKey = async () => {
+    await setSecureApiKey('');
+    setApiKeyInput('');
+    setApiKeySaved(false);
+    Alert.alert('API key removed');
+  };
+
+  const handleSelectModel = async (model: string) => {
+    setSelectedModel(model);
+    await setApiModel(model);
   };
 
   const handleRemovePin = async () => {
@@ -118,6 +156,43 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>API Configuration</Text>
+        <Text style={styles.label}>OpenRouter API Key</Text>
+        <Text style={styles.hint}>{apiKeySaved ? 'Key is saved securely' : 'No API key set — advisory chat will not work'}</Text>
+        <View style={styles.row}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginRight: 8 }]}
+            placeholder="sk-or-v1-..."
+            placeholderTextColor="#64748b"
+            value={apiKeyInput}
+            onChangeText={setApiKeyInput}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveApiKey}>
+            <Text style={styles.saveBtnText}>Save</Text>
+          </TouchableOpacity>
+        </View>
+        {apiKeySaved && (
+          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#ef4444', marginTop: 4 }]} onPress={handleClearApiKey}>
+            <Text style={styles.saveBtnText}>Remove Key</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={[styles.label, { marginTop: 12 }]}>AI Model</Text>
+        {MODELS.map(m => (
+          <TouchableOpacity
+            key={m.value}
+            style={[styles.modelOption, selectedModel === m.value && styles.modelOptionActive]}
+            onPress={() => handleSelectModel(m.value)}
+          >
+            <Text style={[styles.modelOptionText, selectedModel === m.value && styles.modelOptionTextActive]}>
+              {m.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Lock</Text>
         {pinExists ? (
           <>
@@ -160,6 +235,13 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data</Text>
+        <TouchableOpacity style={styles.saveBtn} onPress={exportAllData}>
+          <Text style={styles.saveBtnText}>Export All Data (JSON)</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <Text style={styles.aboutText}>Rahnuma SABRE v1.0.0</Text>
         <Text style={styles.aboutText}>Package: com.rahnuma.sabre</Text>
@@ -182,6 +264,12 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#334155', color: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 15 },
   saveBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  modelOption: {
+    backgroundColor: '#334155', padding: 12, borderRadius: 10, marginBottom: 6,
+  },
+  modelOptionActive: { backgroundColor: '#3b82f6' },
+  modelOptionText: { color: '#94a3b8', fontSize: 14 },
+  modelOptionTextActive: { color: '#fff', fontWeight: '600' },
   aboutText: { color: '#94a3b8', fontSize: 13, marginBottom: 4 },
   disclaimer: { color: '#475569', fontSize: 11, marginTop: 12, textAlign: 'center', fontStyle: 'italic' },
 });

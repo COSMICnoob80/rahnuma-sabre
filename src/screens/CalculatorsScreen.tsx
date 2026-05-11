@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView
 } from 'react-native';
 import {
-  calculateCGT, calculateSIP, calculateDHAROI,
+  calculateCGT, calculateSIP, calculateAssetROI,
   calculateDevaluation, calculateFIRE, formatPKR
 } from '../utils/calculators';
 
@@ -98,19 +98,20 @@ export default function CalculatorsScreen() {
         )}
       </CalculatorCard>
 
-      {/* DHA Plot ROI */}
-      <CalculatorCard title="DHA Plot ROI">
-        <TextInput style={styles.input} placeholder="Buy Price (PKR)" placeholderTextColor="#64748b" value={dhaBuy} onChangeText={setDhaBuy} keyboardType="decimal-pad" />
-        <TextInput style={styles.input} placeholder="Current Value (PKR)" placeholderTextColor="#64748b" value={dhaValue} onChangeText={setDhaValue} keyboardType="decimal-pad" />
+      {/* Asset ROI */}
+      <CalculatorCard title="Asset ROI Calculator">
+        <TextInput style={styles.input} placeholder="Purchase Price (PKR)" placeholderTextColor="#64748b" value={dhaBuy} onChangeText={setDhaBuy} keyboardType="decimal-pad" />
+        <TextInput style={styles.input} placeholder="Current/Future Value (PKR)" placeholderTextColor="#64748b" value={dhaValue} onChangeText={setDhaValue} keyboardType="decimal-pad" />
         <TextInput style={styles.input} placeholder="Years Held" placeholderTextColor="#64748b" value={dhaYears} onChangeText={setDhaYears} keyboardType="decimal-pad" />
         <TouchableOpacity style={styles.calcBtn} onPress={() => {
           const b = parseFloat(dhaBuy), v = parseFloat(dhaValue), y = parseFloat(dhaYears);
-          if (b && v && y) setDhaResult(calculateDHAROI(b, v, y));
+          if (b && v && y) setDhaResult(calculateAssetROI(b, v, y));
         }}>
           <Text style={styles.calcBtnText}>Calculate ROI</Text>
         </TouchableOpacity>
         {dhaResult && (
           <View style={styles.resultBox}>
+            <Text style={styles.resultSub}>Works for property, gold, any appreciating asset</Text>
             <Text style={styles.resultText}>Total Return: {dhaResult.totalReturn.toFixed(2)}%</Text>
             <Text style={styles.resultText}>Annualized IRR: {dhaResult.annualizedReturn.toFixed(2)}%</Text>
             <Text style={[styles.resultText, { color: '#22c55e', fontWeight: '700' }]}>

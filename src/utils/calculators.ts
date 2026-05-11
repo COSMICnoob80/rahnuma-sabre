@@ -44,7 +44,7 @@ export function calculateSIP(
   return { invested, returns: totalValue - invested, totalValue, yearlyData };
 }
 
-export function calculateDHAROI(
+export function calculateAssetROI(
   buyPrice: number,
   currentValue: number,
   yearsHeld: number
@@ -103,3 +103,5 @@ export function calculateFIRE(
 export function formatPKR(amount: number): string {
   return `Rs. ${amount.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
+
+export const calculateDHAROI = calculateAssetROI;

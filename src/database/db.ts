@@ -30,13 +30,20 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
     CREATE TABLE IF NOT EXISTS income (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       source TEXT NOT NULL,
-      amount REAL NOT NULL
+      amount REAL NOT NULL,
+      date TEXT
     );
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
   `);
+
+  try {
+    await db.execAsync('ALTER TABLE income ADD COLUMN date TEXT');
+  } catch {
+    // Column already exists
+  }
 }
 
 // Holdings
@@ -121,8 +128,8 @@ export async function getIncome(): Promise<Income[]> {
 export async function addIncome(i: Omit<Income, 'id'>): Promise<number> {
   const d = await getDb();
   const r = await d.runAsync(
-    'INSERT INTO income (source, amount) VALUES (?, ?)',
-    i.source, i.amount
+    'INSERT INTO income (source, amount, date) VALUES (?, ?, ?)',
+    i.source, i.amount, i.date || new Date().toISOString().split('T')[0]
   );
   return r.lastInsertRowId;
 }
@@ -131,6 +138,15 @@ export async function getTotalIncome(): Promise<number> {
   const d = await getDb();
   const r = await d.getFirstAsync<{ total: number }>(
     'SELECT COALESCE(SUM(amount), 0) as total FROM income'
+  );
+  return r?.total ?? 0;
+}
+
+export async function getTotalIncomeByMonth(month: string): Promise<number> {
+  const d = await getDb();
+  const r = await d.getFirstAsync<{ total: number }>(
+    "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE strftime('%Y-%m', date) = ?",
+    month
   );
   return r?.total ?? 0;
 }

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  getIncome, addIncome, deleteIncome, getTotalIncome,
+  getIncome, addIncome, deleteIncome, getTotalIncome, getTotalIncomeByMonth,
   getExpenses, addExpense, deleteExpense, getExpenseTotalByMonth,
   getExpenseByCategory, getSetting, setSetting
 } from '../database/db';
@@ -18,6 +18,7 @@ export default function BudgetScreen() {
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [monthlyExpenses, setMonthlyExpenses] = useState(0);
   const [categoryTotals, setCategoryTotals] = useState<{ category: string; total: number }[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState(0);
@@ -37,6 +38,7 @@ export default function BudgetScreen() {
     setIncomes(await getIncome());
     setExpenses(await getExpenses());
     setTotalIncome(await getTotalIncome());
+    setMonthlyIncome(await getTotalIncomeByMonth(month));
     setMonthlyExpenses(await getExpenseTotalByMonth(month));
     setCategoryTotals(await getExpenseByCategory(month));
     const b = await getSetting('monthly_budget');
@@ -74,7 +76,7 @@ export default function BudgetScreen() {
     Alert.alert('Budget set!');
   };
 
-  const savingsRate = totalIncome > 0 ? ((totalIncome - monthlyExpenses) / totalIncome) * 100 : 0;
+  const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
   const remainingBudget = monthlyBudget > 0 ? monthlyBudget - monthlyExpenses : 0;
 
   return (
@@ -86,8 +88,8 @@ export default function BudgetScreen() {
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={[styles.summaryValue, { color: '#22c55e' }]}>{formatPKR(totalIncome)}</Text>
+            <Text style={styles.summaryLabel}>This Month</Text>
+            <Text style={[styles.summaryValue, { color: '#22c55e' }]}>{formatPKR(monthlyIncome)}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Spent</Text>
@@ -95,9 +97,10 @@ export default function BudgetScreen() {
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Savings</Text>
-            <Text style={[styles.summaryValue, { color: '#3b82f6' }]}>{formatPKR(totalIncome - monthlyExpenses)}</Text>
+            <Text style={[styles.summaryValue, { color: '#3b82f6' }]}>{formatPKR(monthlyIncome - monthlyExpenses)}</Text>
           </View>
         </View>
+        <Text style={styles.totalIncomeText}>All-time Income: {formatPKR(totalIncome)}</Text>
         <Text style={[styles.savingsRate, { color: savingsRate >= 20 ? '#22c55e' : '#f59e0b' }]}>
           Savings Rate: {savingsRate.toFixed(1)}%
         </Text>
@@ -223,6 +226,7 @@ const styles = StyleSheet.create({
   summaryLabel: { color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   summaryValue: { fontSize: 20, fontWeight: '700', marginTop: 4 },
   savingsRate: { textAlign: 'center', fontSize: 16, fontWeight: '600', marginTop: 12 },
+  totalIncomeText: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: 8 },
   remainingText: { textAlign: 'center', fontSize: 14, marginTop: 4 },
   card: { backgroundColor: '#1e293b', borderRadius: 16, padding: 20, marginBottom: 12 },
   cardTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },

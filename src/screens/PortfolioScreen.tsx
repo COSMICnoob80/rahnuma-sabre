@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getHoldings, addHolding, deleteHolding } from '../database/db';
 import { Holding, HoldingWithGain } from '../types';
 import { formatPKR } from '../utils/calculators';
+import { refreshAllPrices } from '../services/psxService';
 
 const SECTOR_MAP: Record<string, string> = {
   LUCK: 'Cement', OGDC: 'OGMC', HBL: 'Bank', MEBL: 'Bank', UBL: 'Bank',
@@ -64,6 +65,14 @@ export default function PortfolioScreen() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
+  const handleRefreshPrices = async () => {
+    setRefreshing(true);
+    const result = await refreshAllPrices();
+    await load();
+    setRefreshing(false);
+    Alert.alert('Prices Updated', `${result.success} updated, ${result.failed} failed`);
+  };
+
   const totalValue = holdings.reduce((s, h) => s + (h.current_price ?? h.avg_buy_price) * h.quantity, 0);
   const totalCost = holdings.reduce((s, h) => s + h.avg_buy_price * h.quantity, 0);
   const totalGain = totalValue - totalCost;
@@ -89,6 +98,9 @@ export default function PortfolioScreen() {
         <Text style={[styles.gainText, { color: totalGain >= 0 ? '#22c55e' : '#ef4444' }]}>
           {totalGain >= 0 ? '+' : ''}{formatPKR(totalGain)} ({totalGainPct.toFixed(2)}%)
         </Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={handleRefreshPrices}>
+          <Text style={styles.refreshBtnText}>Refresh Prices</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Pie Chart (simple sector bars) */}
@@ -189,6 +201,8 @@ const styles = StyleSheet.create({
   },
   submitBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
   submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  refreshBtn: { backgroundColor: '#3b82f6', padding: 10, borderRadius: 10, marginTop: 12, alignSelf: 'stretch', alignItems: 'center' },
+  refreshBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   emptyText: { color: '#64748b', textAlign: 'center', paddingVertical: 24 },
   holdingItem: {
     flexDirection: 'row',

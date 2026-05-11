@@ -4,8 +4,8 @@ import {
   FlatList, KeyboardAvoidingView, Platform, Alert
 } from 'react-native';
 import { getHoldings, getTotalIncome, getExpenseTotalByMonth } from '../database/db';
+import { getApiKey, getApiModel } from '../utils/secureStorage';
 
-const OPENROUTER_API_KEY = ''; // User must set this
 const SYSTEM_PROMPT = `You are Rahnuma, a Pakistani financial advisor who thinks like Buffett (value investing), Dalio (diversification), and knows PSX like Arif Habib. You have access to the user's portfolio and budget data from the app. Never say 'buy' or 'sell'. Say 'based on your criteria, this aligns/doesn't align with your goals.' Always add: 'This is not investment advice. Consult a SECP-registered advisor for decisions.' Respond in English or Urdu based on the user's language.`;
 
 interface Message {
@@ -19,14 +19,26 @@ export default function AdvisoryScreen() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(OPENROUTER_API_KEY);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [model, setModel] = useState('deepseek/deepseek-v4-flash');
+  const [keyLoaded, setKeyLoaded] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    (async () => {
+      const k = await getApiKey();
+      const m = await getApiModel();
+      setApiKey(k);
+      if (m) setModel(m);
+      setKeyLoaded(true);
+    })();
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
     if (!apiKey) {
-      Alert.alert('API Key Required', 'Enter your OpenRouter API key in the app settings to use advisory.');
+      Alert.alert('API Key Required', 'Go to Settings to enter your OpenRouter API key.');
       return;
     }
 
@@ -47,7 +59,14 @@ export default function AdvisoryScreen() {
         return `${h.ticker}: ${h.quantity} shares @ Rs.${h.avg_buy_price}, current value Rs.${val}`;
       }).join('\n');
 
-      const fullPrompt = `[User Portfolio]\n${portfolioContext || 'No holdings'}\n\n[Monthly Budget]\nIncome: Rs.${income}\nExpenses: Rs.${expenses}\nSavings Rate: ${income > 0 ? ((income - expenses) / income * 100).toFixed(1) : 0}%\n\n[User Question]\n${userMsg.text}`;
+      const enrichedUserMsg = `[User Portfolio]\n${portfolioContext || 'No holdings'}\n\n[Monthly Budget]\nIncome: Rs.${income}\nExpenses: Rs.${expenses}\nSavings Rate: ${income > 0 ? ((income - expenses) / income * 100).toFixed(1) : 0}%\n\n[User Question]\n${userMsg.text}`;
+
+      const recentMessages = messages.slice(-9);
+      const apiMessages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...recentMessages.map(m => ({ role: m.role, content: m.text })),
+        { role: 'user', content: enrichedUserMsg },
+      ];
 
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -57,38 +76,37 @@ export default function AdvisoryScreen() {
           'HTTP-Referer': 'https://rahnuma.app',
         },
         body: JSON.stringify({
-          model: 'deepseek/deepseek-v4-flash',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: fullPrompt },
-          ],
+          model,
+          messages: apiMessages,
         }),
       });
 
       const data = await response.json();
       const reply = data?.choices?.[0]?.message?.content || 'I apologize, I could not process that request. Please try again.';
       setMessages(prev => [...prev, { role: 'assistant', text: reply }]);
-    } catch (err: any) {
+    } catch {
       setMessages(prev => [...prev, { role: 'assistant', text: 'Offline — advisory unavailable. Your portfolios, budget, and calculators still work without internet.' }]);
     } finally {
       setLoading(false);
     }
   };
 
+  if (keyLoaded && !apiKey) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center', padding: 32 }]}>
+        <Text style={styles.emptyTitle}>No API Key Configured</Text>
+        <Text style={styles.emptyText}>
+          Go to Settings → API Configuration to add your OpenRouter API key.
+        </Text>
+        <Text style={styles.emptyText}>
+          Your portfolio, budget, and calculators still work offline.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* API Key input */}
-      <View style={styles.apiKeyBar}>
-        <TextInput
-          style={styles.apiKeyInput}
-          placeholder="OpenRouter API Key"
-          placeholderTextColor="#475569"
-          value={apiKey}
-          onChangeText={setApiKey}
-          secureTextEntry
-        />
-      </View>
-
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -132,14 +150,6 @@ export default function AdvisoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a1628' },
-  apiKeyBar: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  apiKeyInput: {
-    backgroundColor: '#1e293b',
-    color: '#94a3b8',
-    borderRadius: 8,
-    padding: 8,
-    fontSize: 12,
-  },
   chatList: { flex: 1, paddingHorizontal: 16 },
   chatContent: { paddingVertical: 12 },
   bubble: { maxWidth: '85%', padding: 12, borderRadius: 16, marginBottom: 8 },
@@ -181,4 +191,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingTop: 4,
   },
+  emptyTitle: { color: '#e2e8f0', fontSize: 20, fontWeight: '700', marginBottom: 12 },
+  emptyText: { color: '#94a3b8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 8 },
 });
