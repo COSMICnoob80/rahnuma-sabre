@@ -13,7 +13,6 @@ export default function DashboardScreen() {
   const [totalIncome, setTotalIncome] = useState(0);
   const [monthlyExpenses, setMonthlyExpenses] = useState(0);
   const [fireTarget, setFireTarget] = useState(0);
-  const [savings, setSavings] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [cash, setCash] = useState(0);
   const [property, setProperty] = useState(0);
@@ -52,7 +51,14 @@ export default function DashboardScreen() {
   const savingsRate = totalIncome > 0 ? ((totalIncome - monthlyExpenses) / totalIncome) * 100 : 0;
   const currentSavings = totalIncome - monthlyExpenses;
 
-  const fire = calculateFIRE(monthlyExpenses || 1, savings, Math.max(currentSavings, 0), 10);
+  // Corpus counts everything the user actually owns, so FIRE progress reflects
+  // real net worth instead of a value that was never populated.
+  const currentCorpus = portfolioValue + cash + property;
+  const fire = calculateFIRE(monthlyExpenses || 1, currentCorpus, Math.max(currentSavings, 0), 10);
+  const effectiveFireTarget = fireTarget > 0 ? fireTarget : fire.targetCorpus;
+  const fireProgressPct = effectiveFireTarget > 0
+    ? Math.min((currentCorpus / effectiveFireTarget) * 100, 100)
+    : 0;
 
   return (
     <ScrollView
@@ -98,10 +104,13 @@ export default function DashboardScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>FIRE Progress</Text>
         <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${Math.min(fire.progressPct, 100)}%` }]} />
+          <View style={[styles.progressBarFill, { width: `${fireProgressPct}%` }]} />
         </View>
         <Text style={styles.subItem}>
-          {formatPKR(savings)} / {formatPKR(fire.targetCorpus)}
+          {formatPKR(currentCorpus)} / {formatPKR(effectiveFireTarget)}
+        </Text>
+        <Text style={styles.subItem}>
+          {fireProgressPct.toFixed(1)}% of target
         </Text>
         <Text style={styles.subItem}>
           {fire.yearsToFire > 0 ? `${fire.yearsToFire} years to FIRE` : fire.yearsToFire === 0 ? '🎉 FIRE Achieved!' : 'Cannot reach FIRE at current rate'}

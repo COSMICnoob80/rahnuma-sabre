@@ -1,26 +1,136 @@
+// Tax rules encoded here are sourced from the NCCPL notice issued 5 Aug 2025
+// implementing the Income Tax Ordinance, 2001 as amended by the Finance Act 2025
+// (effective 1 July 2025). See docs/TAX-RULES.md for provenance and caveats.
+export const CGT_RULES_VERIFIED_AS_OF = '2025-08-05';
+
+export type CgtTranche =
+  | 'exempt_pre_2013'
+  | 'legacy_2013_2022'
+  | 'progressive_2022_2024'
+  | 'flat_post_2024';
+
+export interface CgtResult {
+  gain: number;
+  tax: number;
+  netGain: number;
+  rate: number;
+  tranche: CgtTranche;
+  note: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const CUTOFFS = {
+  exemptBefore: Date.UTC(2013, 6, 1),
+  progressiveFrom: Date.UTC(2022, 6, 1),
+  flatFrom: Date.UTC(2024, 6, 1),
+};
+
+// Glide path applied to securities acquired between 1 July 2022 and 30 June 2024.
+const LEGACY_SLABS: { minYears: number; rate: number }[] = [
+  { minYears: 6, rate: 0 },
+  { minYears: 5, rate: 0.025 },
+  { minYears: 4, rate: 0.05 },
+  { minYears: 3, rate: 0.075 },
+  { minYears: 2, rate: 0.1 },
+  { minYears: 0, rate: 0.125 },
+];
+
+// Glide path applied to securities acquired between 1 July 2013 and 30 June 2022.
+const LEGACY_SLABS_PRE_2022: { minYears: number; rate: number }[] = [
+  { minYears: 6, rate: 0 },
+  { minYears: 5, rate: 0.025 },
+  { minYears: 4, rate: 0.05 },
+  { minYears: 3, rate: 0.075 },
+  { minYears: 2, rate: 0.1 },
+  { minYears: 1, rate: 0.125 },
+  { minYears: 0, rate: 0.15 },
+];
+
+// Securities acquired on/after 1 July 2024: flat 15%, no holding-period relief,
+// regardless of Active Taxpayer List status.
+const FLAT_RATE_POST_2024 = 0.15;
+
+export const SUPER_TAX_THRESHOLD_PKR = 150_000_000;
+export const SUPER_TAX_NOTE =
+  'Section 4C super tax applies to aggregate capital gains above Rs 150,000,000 in a tax year (progressive, up to 10%). Not included in this estimate.';
+
+function toUtcMs(date: string | Date): number {
+  if (date instanceof Date) return date.getTime();
+  const parsed = Date.parse(date);
+  return Number.isNaN(parsed) ? Date.now() : parsed;
+}
+
+function slabRate(slabs: { minYears: number; rate: number }[], years: number): number {
+  for (const slab of slabs) {
+    if (years >= slab.minYears) return slab.rate;
+  }
+  return 0;
+}
+
+export function cgtTrancheFor(acquisitionDate: string | Date): CgtTranche {
+  const ms = toUtcMs(acquisitionDate);
+  if (ms < CUTOFFS.exemptBefore) return 'exempt_pre_2013';
+  if (ms < CUTOFFS.progressiveFrom) return 'legacy_2013_2022';
+  if (ms < CUTOFFS.flatFrom) return 'progressive_2022_2024';
+  return 'flat_post_2024';
+}
+
+export function cgtRateFor(
+  acquisitionDate: string | Date,
+  holdingDays: number
+): { rate: number; tranche: CgtTranche; note: string } {
+  const tranche = cgtTrancheFor(acquisitionDate);
+  const years = holdingDays / 365;
+
+  switch (tranche) {
+    case 'exempt_pre_2013':
+      return {
+        rate: 0,
+        tranche,
+        note: 'Securities acquired before 1 July 2013 are exempt from CGT.',
+      };
+    case 'flat_post_2024':
+      return {
+        rate: FLAT_RATE_POST_2024,
+        tranche,
+        note: 'Flat 15% applies to securities acquired on/after 1 July 2024, regardless of holding period or ATL status.',
+      };
+    case 'progressive_2022_2024':
+      return {
+        rate: slabRate(LEGACY_SLABS, years),
+        tranche,
+        note: 'Progressive slab (12.5% down to 0%) applies to securities acquired between 1 July 2022 and 30 June 2024. Verify the legacy slab with NCCPL.',
+      };
+    case 'legacy_2013_2022':
+      return {
+        rate: slabRate(LEGACY_SLABS_PRE_2022, years),
+        tranche,
+        note: 'Pre-Finance Act 2024 slab (15% down to 0%). Verify with NCCPL for acquisitions in this window.',
+      };
+  }
+}
+
 export function calculateCGT(
   buyPrice: number,
   sellPrice: number,
   quantity: number,
-  holdingDays: number
-): { gain: number; tax: number; netGain: number } {
+  holdingDays: number,
+  acquisitionDate?: string | Date
+): CgtResult {
   const gain = (sellPrice - buyPrice) * quantity;
-  if (gain <= 0) return { gain, tax: 0, netGain: gain };
+  const { rate, tranche, note } = cgtRateFor(acquisitionDate ?? new Date(), holdingDays);
 
-  // Pakistan CGT on PSX as per current rules
-  // Holdings < 1y: 15% | 1-2y: 12.5% | 2-3y: 10% | 3-4y: 7.5% | 4-5y: 5% | 5-6y: 2.5% | >6y: 0%
-  let rate = 0;
-  const years = holdingDays / 365;
-  if (holdingDays < 365) rate = 0.15;
-  else if (years < 2) rate = 0.125;
-  else if (years < 3) rate = 0.10;
-  else if (years < 4) rate = 0.075;
-  else if (years < 5) rate = 0.05;
-  else if (years < 6) rate = 0.025;
-  else rate = 0;
+  if (gain <= 0) {
+    return { gain, tax: 0, netGain: gain, rate, tranche, note };
+  }
 
   const tax = gain * rate;
-  return { gain, tax, netGain: gain - tax };
+  return { gain, tax, netGain: gain - tax, rate, tranche, note };
+}
+
+export function capitalGainsSuperTaxNote(gain: number): string | null {
+  return gain > SUPER_TAX_THRESHOLD_PKR ? SUPER_TAX_NOTE : null;
 }
 
 export function calculateSIP(
@@ -35,7 +145,9 @@ export function calculateSIP(
   for (let y = 1; y <= years; y++) {
     const m = y * 12;
     const invested = monthlyInvestment * m;
-    const value = monthlyInvestment * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate) * (1 + monthlyRate);
+    const value = monthlyRate === 0
+      ? invested
+      : monthlyInvestment * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate) * (1 + monthlyRate);
     yearlyData.push({ year: y, invested, value: Math.round(value) });
   }
 
@@ -59,9 +171,9 @@ export function calculateAssetROI(
 
 export function calculateDevaluation(
   currentPkrValue: number,
-  devaluationPct: number
+  devaluationPct: number,
+  currentUsdRate = 280
 ): { newValue: number; loss: number; usdEquivalent: number; impliedUsdRate: number } {
-  const currentUsdRate = 280;
   const newUsdRate = currentUsdRate * (1 + devaluationPct / 100);
   const usdEquivalent = currentPkrValue / currentUsdRate;
   const newValue = usdEquivalent * newUsdRate;
@@ -77,27 +189,40 @@ export function calculateFIRE(
   monthlyExpenses: number,
   currentSavings: number,
   monthlySavings: number,
-  expectedReturn: number
-): { targetCorpus: number; yearsToFire: number; progressPct: number } {
-  const targetCorpus = monthlyExpenses * 12 * 25;
+  expectedReturn: number,
+  inflationRate = 0,
+  withdrawalRate = 4
+): { targetCorpus: number; yearsToFire: number; progressPct: number; realReturn: number } {
+  const annualExpenses = monthlyExpenses * 12;
+  const targetCorpus = annualExpenses / (withdrawalRate / 100);
   const progressPct = Math.min((currentSavings / targetCorpus) * 100, 100);
 
-  if (currentSavings >= targetCorpus) return { targetCorpus, yearsToFire: 0, progressPct: 100 };
+  const realReturn = inflationRate > 0
+    ? ((1 + expectedReturn / 100) / (1 + inflationRate / 100) - 1) * 100
+    : expectedReturn;
 
-  const monthlyRate = expectedReturn / 100 / 12;
-  const monthlyTarget = targetCorpus;
+  if (currentSavings >= targetCorpus) {
+    return { targetCorpus, yearsToFire: 0, progressPct: 100, realReturn };
+  }
 
+  const monthlyRate = realReturn / 100 / 12;
   let years = 0;
   let fv = currentSavings;
   const maxYears = 100;
-  while (fv < monthlyTarget && years < maxYears) {
+
+  while (fv < targetCorpus && years < maxYears) {
     for (let m = 0; m < 12; m++) {
       fv = fv * (1 + monthlyRate) + monthlySavings;
     }
     years++;
   }
 
-  return { targetCorpus, yearsToFire: years >= maxYears ? -1 : years, progressPct };
+  return {
+    targetCorpus,
+    yearsToFire: years >= maxYears ? -1 : years,
+    progressPct,
+    realReturn,
+  };
 }
 
 export function formatPKR(amount: number): string {
@@ -105,3 +230,7 @@ export function formatPKR(amount: number): string {
 }
 
 export const calculateDHAROI = calculateAssetROI;
+
+export function daysBetween(from: string | Date, to: string | Date = new Date()): number {
+  return Math.max(0, Math.round((toUtcMs(to) - toUtcMs(from)) / DAY_MS));
+}

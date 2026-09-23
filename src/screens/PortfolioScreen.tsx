@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getHoldings, addHolding, deleteHolding } from '../database/db';
 import { Holding, HoldingWithGain } from '../types';
 import { formatPKR } from '../utils/calculators';
-import { refreshAllPrices } from '../services/psxService';
+import { refreshAllPrices, priceFreshness } from '../services/psxService';
 
 const SECTOR_MAP: Record<string, string> = {
   LUCK: 'Cement', OGDC: 'OGMC', HBL: 'Bank', MEBL: 'Bank', UBL: 'Bank',
@@ -28,6 +28,7 @@ export default function PortfolioScreen() {
   const [ticker, setTicker] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -48,10 +49,22 @@ export default function PortfolioScreen() {
       Alert.alert('Invalid values');
       return;
     }
-    await addHolding({ ticker: ticker.toUpperCase(), quantity: q, avg_buy_price: p, current_price: null, last_fetched: null });
+    if (purchaseDate && Number.isNaN(Date.parse(purchaseDate))) {
+      Alert.alert('Invalid purchase date', 'Use the format YYYY-MM-DD, or leave it blank.');
+      return;
+    }
+    await addHolding({
+      ticker: ticker.toUpperCase(),
+      quantity: q,
+      avg_buy_price: p,
+      current_price: null,
+      last_fetched: null,
+      purchase_date: purchaseDate || null,
+    });
     setTicker('');
     setQuantity('');
     setPrice('');
+    setPurchaseDate('');
     setShowAdd(false);
     await load();
   };
@@ -70,7 +83,8 @@ export default function PortfolioScreen() {
     const result = await refreshAllPrices();
     await load();
     setRefreshing(false);
-    Alert.alert('Prices Updated', `${result.success} updated, ${result.failed} failed`);
+    const staleNote = result.stale > 0 ? ` ${result.stale} kept their last known price and are marked stale.` : '';
+    Alert.alert('Prices Updated', `${result.success} updated, ${result.failed} failed.${staleNote}`);
   };
 
   const totalValue = holdings.reduce((s, h) => s + (h.current_price ?? h.avg_buy_price) * h.quantity, 0);
@@ -137,6 +151,8 @@ export default function PortfolioScreen() {
             <TextInput style={styles.input} placeholder="Ticker" placeholderTextColor="#64748b" value={ticker} onChangeText={setTicker} autoCapitalize="characters" />
             <TextInput style={styles.input} placeholder="Quantity" placeholderTextColor="#64748b" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" />
             <TextInput style={styles.input} placeholder="Avg Buy Price (PKR)" placeholderTextColor="#64748b" value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
+            <TextInput style={styles.input} placeholder="Purchase date (YYYY-MM-DD, optional)" placeholderTextColor="#64748b" value={purchaseDate} onChangeText={setPurchaseDate} autoCapitalize="none" />
+            <Text style={styles.formHint}>The purchase date decides your capital gains tax rate.</Text>
             <TouchableOpacity style={styles.submitBtn} onPress={handleAdd}>
               <Text style={styles.submitBtnText}>Add Holding</Text>
             </TouchableOpacity>
@@ -153,11 +169,16 @@ export default function PortfolioScreen() {
           const costBasis = h.avg_buy_price * h.quantity;
           const gain = currentValue - costBasis;
           const gainPct = costBasis > 0 ? (gain / costBasis) * 100 : 0;
+          const freshness = priceFreshness(h.last_fetched);
           return (
             <TouchableOpacity key={h.id} style={styles.holdingItem} onLongPress={() => h.id && handleDelete(h.id)}>
               <View style={styles.holdingLeft}>
                 <Text style={styles.ticker}>{h.ticker}</Text>
                 <Text style={styles.holdingDetail}>{h.quantity} shares @ Rs. {h.avg_buy_price.toFixed(0)}</Text>
+                <Text style={[styles.freshnessLabel, freshness.stale && styles.freshnessStale]}>
+                  {freshness.label}
+                  {!h.current_price ? ' · showing buy price' : ''}
+                </Text>
               </View>
               <View style={styles.holdingRight}>
                 <Text style={styles.holdingValue}>{formatPKR(currentValue)}</Text>
@@ -201,6 +222,9 @@ const styles = StyleSheet.create({
   },
   submitBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
   submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  formHint: { color: '#64748b', fontSize: 11, marginBottom: 8 },
+  freshnessLabel: { color: '#22c55e', fontSize: 10, marginTop: 3 },
+  freshnessStale: { color: '#f59e0b' },
   refreshBtn: { backgroundColor: '#3b82f6', padding: 10, borderRadius: 10, marginTop: 12, alignSelf: 'stretch', alignItems: 'center' },
   refreshBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   emptyText: { color: '#64748b', textAlign: 'center', paddingVertical: 24 },

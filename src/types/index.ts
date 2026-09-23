@@ -5,6 +5,7 @@ export interface Holding {
   avg_buy_price: number;
   current_price: number | null;
   last_fetched: string | null;
+  purchase_date: string | null;
 }
 
 export interface Expense {

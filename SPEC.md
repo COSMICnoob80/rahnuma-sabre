@@ -150,19 +150,21 @@ Years = logarithmic FV calculation accounting for:
   - Target = fire_number in today's PKR (inflation-adjusted)
 ```
 
-### 3.4 CGT Calculation
-```
-gain = (sale_price - purchase_price) × quantity
-holding_days = sale_date - purchase_date
+### 3.4 CGT Calculation (Finance Act 2025)
 
-if holding_days < 365: rate = 0.15
-elif holding_days < 730: rate = 0.125
-elif holding_days < 1095: rate = 0.10
-elif holding_days < 1460: rate = 0.075
-else: rate = 0.0
+CGT is decided by the **acquisition date** first, holding period second. Full provenance and
+confidence caveats live in `docs/TAX-RULES.md`; the executable truth is
+`src/utils/calculators.ts` with `tests/calculators.test.ts`.
 
-tax = gain × rate (only if gain > 0; losses have separate treatment)
-```
+| Acquisition window | Treatment |
+|---|---|
+| Before 1 July 2013 | Exempt |
+| 1 July 2013 – 30 June 2022 | Legacy slab: 15% (under 1 year) gliding to 0% after 6 years |
+| 1 July 2022 – 30 June 2024 | Progressive, 12.5% gliding to 0% by holding period |
+| On/after 1 July 2024 | Flat 15%, any holding period, any ATL status |
+
+Section 4C super tax on capital-gains income above Rs 150,000,000 (progressive, up to 10%)
+is disclosed to the user but never estimated per trade.
 
 ---
 
@@ -175,9 +177,13 @@ tax = gain × rate (only if gain > 0; losses have separate treatment)
 - [ ] `POST /api/v1/fire/calculate` returns correct FIRE projection
 - [ ] FIRE calculator test: income 150K, expenses 80K → savings_rate = 0.467
 - [ ] FIRE calculator test: expenses 80K/mo, SWR 3.5% → fire_number = 27,428,571
-- [ ] CGT test: bought at 25.50, sold at 32.00, 1000 shares, held 250 days → tax = 975
-- [ ] CGT test: same scenario held 800 days → tax = 812.50 (12.5% rate)
-- [ ] CGT test: held 1500 days → tax = 0 (0% rate)
+- [ ] CGT test: acquired 2026-01-01, bought at 25.50, sold at 32.00, 1000 shares, held 250 days → tax = 975 (flat 15%)
+- [ ] CGT test: same trade acquired 2026-01-01 but held 1500 days → tax = 975 (flat 15%; no holding-period relief)
+- [ ] CGT test: acquired 2023-01-01, held 250 days → tax = 1250 (progressive 12.5% tranche)
+- [ ] CGT test: acquired 2010-01-01 → tax = 0 (pre-2013 exemption)
+- [ ] CGT test: a loss returns zero tax
+- [ ] Advisory test: `enforceNoDirective` flags "you should buy" and passes neutral framing
+- [ ] Advisory test: the persona router maps each AGENTS.md query pattern to the right persona
 - [ ] All endpoints return 401 without Bearer token
 - [ ] `ruff check .` passes with zero warnings
 - [ ] `pytest` passes all calculator tests

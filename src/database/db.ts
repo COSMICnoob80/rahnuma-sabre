@@ -19,7 +19,8 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
       quantity REAL NOT NULL,
       avg_buy_price REAL NOT NULL,
       current_price REAL,
-      last_fetched TEXT
+      last_fetched TEXT,
+      purchase_date TEXT
     );
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +45,12 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
   } catch {
     // Column already exists
   }
+
+  try {
+    await db.execAsync('ALTER TABLE holdings ADD COLUMN purchase_date TEXT');
+  } catch {
+    // Column already exists
+  }
 }
 
 // Holdings
@@ -55,8 +62,8 @@ export async function getHoldings(): Promise<Holding[]> {
 export async function addHolding(h: Omit<Holding, 'id'>): Promise<number> {
   const d = await getDb();
   const r = await d.runAsync(
-    'INSERT INTO holdings (ticker, quantity, avg_buy_price, current_price, last_fetched) VALUES (?, ?, ?, ?, ?)',
-    h.ticker, h.quantity, h.avg_buy_price, h.current_price, h.last_fetched
+    'INSERT INTO holdings (ticker, quantity, avg_buy_price, current_price, last_fetched, purchase_date) VALUES (?, ?, ?, ?, ?, ?)',
+    h.ticker, h.quantity, h.avg_buy_price, h.current_price, h.last_fetched, h.purchase_date
   );
   return r.lastInsertRowId;
 }
@@ -174,29 +181,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
   );
 }
 
-// PIN
-export async function setPin(pin: string): Promise<void> {
-  const hash = simpleHash(pin);
-  await setSetting('pin_hash', hash);
-}
-
-export async function verifyPin(pin: string): Promise<boolean> {
-  const hash = await getSetting('pin_hash');
-  if (!hash) return true;
-  return hash === simpleHash(pin);
-}
-
-export async function hasPin(): Promise<boolean> {
-  const hash = await getSetting('pin_hash');
-  return hash !== null;
-}
-
-function simpleHash(s: string): string {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    h = ((h << 5) - h) + c;
-    h = h & h;
-  }
-  return Math.abs(h).toString(16);
+export async function deleteSetting(key: string): Promise<void> {
+  const d = await getDb();
+  await d.runAsync('DELETE FROM settings WHERE key = ?', key);
 }

@@ -4,16 +4,17 @@ import {
   ScrollView, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSetting, setSetting, hasPin, setPin } from '../database/db';
+import { getSetting, setSetting } from '../database/db';
 import { formatPKR } from '../utils/calculators';
-import { getApiKey, setApiKey as setSecureApiKey, getApiModel, setApiModel } from '../utils/secureStorage';
+import { PROVIDERS, ProviderId } from '../services/providers';
+import {
+  getProviderKey, setProviderKey, getProviderModel, setProviderModel,
+} from '../utils/secureStorage';
+import { hasPin, setPin, removePin } from '../utils/pinLock';
 import { exportAllData } from '../services/dataService';
 
-const MODELS = [
-  { label: 'DeepSeek V4 Flash', value: 'deepseek/deepseek-v4-flash' },
-  { label: 'Kimi K2.6', value: 'kimi/kimi-k2.6' },
-  { label: 'GLM 5.1', value: 'glm/glm-5-1' },
-];
+type KeysState = Record<string, { input: string; saved: boolean }>;
+type ModelsState = Record<string, string>;
 
 export default function SettingsScreen() {
   const [cashAmount, setCashAmount] = useState('');
@@ -22,9 +23,8 @@ export default function SettingsScreen() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [pin, setPinVal] = useState('');
   const [pinExists, setPinExists] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [apiKeySaved, setApiKeySaved] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('deepseek/deepseek-v4-flash');
+  const [keys, setKeys] = useState<KeysState>({});
+  const [models, setModels] = useState<ModelsState>({});
 
   const load = useCallback(async () => {
     const c = await getSetting('cash');
@@ -36,17 +36,19 @@ export default function SettingsScreen() {
     const b = await getSetting('monthly_budget');
     if (b) setBudgetAmount(b);
     setPinExists(await hasPin());
+
+    const nextKeys: KeysState = {};
+    const nextModels: ModelsState = {};
+    for (const provider of PROVIDERS) {
+      const key = await getProviderKey(provider.id);
+      nextKeys[provider.id] = { input: key ?? '', saved: !!key };
+      nextModels[provider.id] = await getProviderModel(provider.id);
+    }
+    setKeys(nextKeys);
+    setModels(nextModels);
   }, []);
 
-  const loadSettings = useCallback(async () => {
-    const key = await getApiKey();
-    setApiKeySaved(!!key);
-    setApiKeyInput(key || '');
-    const model = await getApiModel();
-    if (model) setSelectedModel(model);
-  }, []);
-
-  useFocusEffect(useCallback(() => { load(); loadSettings(); }, [load, loadSettings]));
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const saveSetting = async (key: string, val: string, label: string) => {
     const n = parseFloat(val);
@@ -63,33 +65,89 @@ export default function SettingsScreen() {
     Alert.alert('PIN set!');
   };
 
-  const handleSaveApiKey = async () => {
-    if (!apiKeyInput.trim()) { Alert.alert('Enter an API key'); return; }
-    await setSecureApiKey(apiKeyInput.trim());
-    setApiKeySaved(true);
-    Alert.alert('API key saved!');
-  };
-
-  const handleClearApiKey = async () => {
-    await setSecureApiKey('');
-    setApiKeyInput('');
-    setApiKeySaved(false);
-    Alert.alert('API key removed');
-  };
-
-  const handleSelectModel = async (model: string) => {
-    setSelectedModel(model);
-    await setApiModel(model);
-  };
-
   const handleRemovePin = async () => {
-    await setSetting('pin_hash', '');
+    await removePin();
     setPinExists(false);
     Alert.alert('PIN removed');
   };
 
+  const handleSaveKey = async (id: ProviderId) => {
+    const value = keys[id]?.input?.trim() ?? '';
+    if (!value) { Alert.alert('Enter an API key'); return; }
+    await setProviderKey(id, value);
+    setKeys((prev) => ({ ...prev, [id]: { input: value, saved: true } }));
+    Alert.alert('API key saved securely');
+  };
+
+  const handleClearKey = async (id: ProviderId) => {
+    await setProviderKey(id, '');
+    setKeys((prev) => ({ ...prev, [id]: { input: '', saved: false } }));
+  };
+
+  const handleSelectModel = async (id: ProviderId, model: string) => {
+    setModels((prev) => ({ ...prev, [id]: model }));
+    await setProviderModel(id, model);
+  };
+
+  const saveButton = (label: string, onPress: () => void, danger = false) => (
+    <TouchableOpacity style={[styles.saveBtn, danger && styles.dangerBtn]} onPress={onPress}>
+      <Text style={styles.saveBtnText}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>AI Providers</Text>
+        <Text style={styles.hint}>
+          Add at least one key. The advisor tries them in order and falls back automatically, so a free-tier key is enough to run at zero cost.
+        </Text>
+
+        {PROVIDERS.map((provider) => (
+          <View key={provider.id} style={styles.providerBlock}>
+            <Text style={styles.label}>{provider.label}</Text>
+            <Text style={styles.hint}>
+              {provider.signupNote} — {keys[provider.id]?.saved ? 'key saved securely' : 'no key set'}
+            </Text>
+            <View style={styles.row}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginRight: 8 }]}
+                placeholder="Paste API key"
+                placeholderTextColor="#64748b"
+                value={keys[provider.id]?.input ?? ''}
+                onChangeText={(text) =>
+                  setKeys((prev) => ({
+                    ...prev,
+                    [provider.id]: { input: text, saved: prev[provider.id]?.saved ?? false },
+                  }))
+                }
+                secureTextEntry
+                autoCapitalize="none"
+              />
+              {saveButton('Save', () => handleSaveKey(provider.id))}
+            </View>
+            {keys[provider.id]?.saved && saveButton('Remove Key', () => handleClearKey(provider.id), true)}
+
+            {provider.models.map((m) => (
+              <TouchableOpacity
+                key={m.value}
+                style={[styles.modelOption, models[provider.id] === m.value && styles.modelOptionActive]}
+                onPress={() => handleSelectModel(provider.id, m.value)}
+              >
+                <Text
+                  style={[
+                    styles.modelOptionText,
+                    models[provider.id] === m.value && styles.modelOptionTextActive,
+                  ]}
+                >
+                  {m.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Financial Settings</Text>
 
@@ -103,9 +161,7 @@ export default function SettingsScreen() {
             onChangeText={setCashAmount}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity style={styles.saveBtn} onPress={() => saveSetting('cash', cashAmount, 'Cash')}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
+          {saveButton('Save', () => saveSetting('cash', cashAmount, 'Cash'))}
         </View>
 
         <Text style={styles.label}>Property Value (PKR)</Text>
@@ -118,13 +174,11 @@ export default function SettingsScreen() {
             onChangeText={setPropertyAmount}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity style={styles.saveBtn} onPress={() => saveSetting('property', propertyAmount, 'Property')}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
+          {saveButton('Save', () => saveSetting('property', propertyAmount, 'Property'))}
         </View>
 
         <Text style={styles.label}>FIRE Target (PKR)</Text>
-        <Text style={styles.hint}>Leave empty to use default (monthly expenses × 300)</Text>
+        <Text style={styles.hint}>Leave empty to auto-calculate (monthly expenses × 300 at a 4% withdrawal rate)</Text>
         <View style={styles.row}>
           <TextInput
             style={[styles.input, { flex: 1, marginRight: 8 }]}
@@ -134,9 +188,7 @@ export default function SettingsScreen() {
             onChangeText={setFireTargetAmount}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity style={styles.saveBtn} onPress={() => saveSetting('fire_target', fireTargetAmount, 'FIRE Target')}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
+          {saveButton('Save', () => saveSetting('fire_target', fireTargetAmount, 'FIRE Target'))}
         </View>
 
         <Text style={styles.label}>Monthly Budget (PKR)</Text>
@@ -149,54 +201,15 @@ export default function SettingsScreen() {
             onChangeText={setBudgetAmount}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity style={styles.saveBtn} onPress={() => saveSetting('monthly_budget', budgetAmount, 'Budget')}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
+          {saveButton('Save', () => saveSetting('monthly_budget', budgetAmount, 'Budget'))}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>API Configuration</Text>
-        <Text style={styles.label}>OpenRouter API Key</Text>
-        <Text style={styles.hint}>{apiKeySaved ? 'Key is saved securely' : 'No API key set — advisory chat will not work'}</Text>
-        <View style={styles.row}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="sk-or-v1-..."
-            placeholderTextColor="#64748b"
-            value={apiKeyInput}
-            onChangeText={setApiKeyInput}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveApiKey}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
-        </View>
-        {apiKeySaved && (
-          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#ef4444', marginTop: 4 }]} onPress={handleClearApiKey}>
-            <Text style={styles.saveBtnText}>Remove Key</Text>
-          </TouchableOpacity>
-        )}
-        <Text style={[styles.label, { marginTop: 12 }]}>AI Model</Text>
-        {MODELS.map(m => (
-          <TouchableOpacity
-            key={m.value}
-            style={[styles.modelOption, selectedModel === m.value && styles.modelOptionActive]}
-            onPress={() => handleSelectModel(m.value)}
-          >
-            <Text style={[styles.modelOptionText, selectedModel === m.value && styles.modelOptionTextActive]}>
-              {m.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Lock</Text>
         {pinExists ? (
           <>
-            <Text style={styles.hint}>PIN lock is active</Text>
+            <Text style={styles.hint}>PIN lock is active. Five wrong attempts trigger a 30-second lockout.</Text>
             <TextInput
               style={styles.input}
               placeholder="New 4-digit PIN"
@@ -207,12 +220,10 @@ export default function SettingsScreen() {
               secureTextEntry
               maxLength={4}
             />
-            <TouchableOpacity style={styles.saveBtn} onPress={handlePinSetup}>
-              <Text style={styles.saveBtnText}>Change PIN</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#ef4444', marginTop: 8 }]} onPress={handleRemovePin}>
-              <Text style={styles.saveBtnText}>Remove PIN</Text>
-            </TouchableOpacity>
+            <View style={{ height: 8 }} />
+            {saveButton('Change PIN', handlePinSetup)}
+            <View style={{ height: 8 }} />
+            {saveButton('Remove PIN', handleRemovePin, true)}
           </>
         ) : (
           <>
@@ -227,9 +238,8 @@ export default function SettingsScreen() {
               secureTextEntry
               maxLength={4}
             />
-            <TouchableOpacity style={styles.saveBtn} onPress={handlePinSetup}>
-              <Text style={styles.saveBtnText}>Set PIN</Text>
-            </TouchableOpacity>
+            <View style={{ height: 8 }} />
+            {saveButton('Set PIN', handlePinSetup)}
           </>
         )}
       </View>
@@ -258,15 +268,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a1628', padding: 16 },
   section: { backgroundColor: '#1e293b', borderRadius: 16, padding: 20, marginBottom: 12 },
   sectionTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  providerBlock: { borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 12, marginTop: 12 },
   label: { color: '#cbd5e1', fontSize: 14, marginBottom: 4, marginTop: 4 },
-  hint: { color: '#64748b', fontSize: 12, marginBottom: 8 },
+  hint: { color: '#64748b', fontSize: 12, marginBottom: 8, lineHeight: 16 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   input: { backgroundColor: '#334155', color: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 15 },
   saveBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
+  dangerBtn: { backgroundColor: '#ef4444', marginTop: 8 },
   saveBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  modelOption: {
-    backgroundColor: '#334155', padding: 12, borderRadius: 10, marginBottom: 6,
-  },
+  modelOption: { backgroundColor: '#334155', padding: 12, borderRadius: 10, marginBottom: 6 },
   modelOptionActive: { backgroundColor: '#3b82f6' },
   modelOptionText: { color: '#94a3b8', fontSize: 14 },
   modelOptionTextActive: { color: '#fff', fontWeight: '600' },

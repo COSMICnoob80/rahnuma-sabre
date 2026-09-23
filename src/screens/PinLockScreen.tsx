@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert
 } from 'react-native';
-import { hasPin, setPin, verifyPin } from '../database/db';
+import { hasPin, setPin, verifyPin, lockoutRemainingMs, attemptsLeft } from '../utils/pinLock';
 
 export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [mode, setMode] = useState<'create' | 'enter'>('enter');
   const [pin, setPinVal] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -17,15 +18,37 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   }, []);
 
   const handleEnter = async () => {
-    if (pin.length !== 4) { Alert.alert('Enter 4-digit PIN'); return; }
-    const ok = await verifyPin(pin);
-    if (ok) onUnlock();
-    else { Alert.alert('Wrong PIN'); setPinVal(''); }
+    if (pin.length !== 4) {
+      setMessage('Enter a 4-digit PIN');
+      return;
+    }
+
+    const result = await verifyPin(pin);
+    if (result === 'ok' || result === 'no_pin') {
+      onUnlock();
+      return;
+    }
+
+    setPinVal('');
+    if (result === 'locked') {
+      const remaining = Math.ceil((await lockoutRemainingMs()) / 1000);
+      setMessage(`Too many attempts. Try again in ${remaining}s.`);
+      return;
+    }
+
+    const left = await attemptsLeft();
+    setMessage(left > 0 ? `Wrong PIN. ${left} attempt${left === 1 ? '' : 's'} left.` : 'Wrong PIN.');
   };
 
   const handleCreate = async () => {
-    if (pin.length !== 4) { Alert.alert('Enter 4-digit PIN'); return; }
-    if (pin !== confirmPin) { Alert.alert('PINs do not match'); return; }
+    if (pin.length !== 4) {
+      setMessage('Enter a 4-digit PIN');
+      return;
+    }
+    if (pin !== confirmPin) {
+      setMessage('PINs do not match');
+      return;
+    }
     await setPin(pin);
     onUnlock();
   };
@@ -43,8 +66,9 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             secureTextEntry
             maxLength={4}
             value={pin}
-            onChangeText={setPinVal}
+            onChangeText={(v) => { setPinVal(v); setMessage(''); }}
           />
+          {!!message && <Text style={styles.message}>{message}</Text>}
           <TouchableOpacity style={styles.button} onPress={handleEnter}>
             <Text style={styles.buttonText}>Unlock</Text>
           </TouchableOpacity>
@@ -58,8 +82,9 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             secureTextEntry
             maxLength={4}
             value={pin}
-            onChangeText={setPinVal}
+            onChangeText={(v) => { setPinVal(v); setMessage(''); }}
             placeholder="Enter PIN"
+            placeholderTextColor="#64748b"
           />
           <TextInput
             style={styles.input}
@@ -67,9 +92,11 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             secureTextEntry
             maxLength={4}
             value={confirmPin}
-            onChangeText={setConfirmPin}
+            onChangeText={(v) => { setConfirmPin(v); setMessage(''); }}
             placeholder="Confirm PIN"
+            placeholderTextColor="#64748b"
           />
+          {!!message && <Text style={styles.message}>{message}</Text>}
           <TouchableOpacity style={styles.button} onPress={handleCreate}>
             <Text style={styles.buttonText}>Set PIN</Text>
           </TouchableOpacity>
@@ -101,6 +128,7 @@ const styles = StyleSheet.create({
     letterSpacing: 12,
     marginBottom: 20,
   },
+  message: { color: '#f59e0b', fontSize: 14, marginBottom: 16, textAlign: 'center' },
   button: {
     backgroundColor: '#3b82f6',
     paddingVertical: 14,

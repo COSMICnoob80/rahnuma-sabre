@@ -41,43 +41,56 @@ Rahnuma is a **Personal Financial Intelligence Agent** for Pakistani investors. 
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React Native (mobile) / Next.js (web) / Electron (desktop) |
-| Backend | FastAPI (Python) |
-| Agent Framework | LangGraph |
-| AI Models | Claude (advisory) / Gemini 3 (document scanning) / Ollama (offline) |
-| Database | PostgreSQL + Redis + ChromaDB |
-| Data Integration | MCP servers (PSX, mutual funds, SBP, budget import) |
-| Automation | n8n (daily briefings, SIP reminders, alerts) |
+| Layer | Technology | Status |
+|---|---|---|
+| Frontend | React Native + Expo (Android first) | Built |
+| Storage | SQLite on-device, SecureStore for keys and PIN | Built |
+| AI runtime | Provider chain: Gemini / Groq free tiers, OpenRouter, user BYOK | Built |
+| Routing | Deterministic persona router + Council debate mode | Built |
+| Financial math | Pure TypeScript, unit tested | Built |
+| Backend | None — deliberately deferred (see `STATE.md`) | Not built |
+| Offline model | Gemma on-device (Principle XVI) | Not built |
+| MCP servers, RAG, daily briefings | Specified in AGENTS.md | Not built |
 
 ---
 
 ## Getting Started
 
-*Rahnuma is in architecture phase. Implementation has not begun.*
+```bash
+git clone https://github.com/COSMICnoob80/rahnuma-sabre.git
+cd rahnuma-sabre
+npm install
+npm start
+```
+
+Then, inside the app, add a free AI key in **Settings → AI Providers** (Gemini and Groq both
+have free tiers). Without a key, the dashboard, portfolio, budget and every calculator still
+work — only the advisory chat is unavailable.
 
 ```bash
-# Coming soon
-git clone https://github.com/shah-g/rahnuma-ai.git
-cd rahnuma-ai
-docker compose up
+npm test           # 38 unit tests, no test dependencies
+npm run ts:check   # strict TypeScript
 ```
 
 ---
 
 ## Project Status
 
-- [x] Vision document (CLAUDE.md)
-- [x] Agent architecture (AGENTS.md)
-- [x] Skill definitions (SKILL.md)
-- [ ] Phase 0: Foundation
-- [ ] Phase 1: Core Advisory Engine
-- [ ] Phase 2: Data Integration
-- [ ] Phase 3: Intelligence Layer
-- [ ] Phase 4: Mobile + Desktop
-- [ ] Phase 5: Advanced Features
-- [ ] Phase 6: Beta & Launch
+- [x] Vision document (CLAUDE.md) and agent architecture (AGENTS.md)
+- [x] Dashboard: net worth, savings rate, portfolio P&L, FIRE progress
+- [x] Portfolio: holdings, sector allocation, price refresh with freshness labelling
+- [x] Budget: income and expenses by category and month
+- [x] Calculators: CGT (Finance Act 2025 rules), SIP, asset ROI, PKR devaluation, FIRE
+- [x] Advisory: 6 personas, Auto routing, Council debate, buy/sell guard
+- [x] PIN lock with attempt throttling, JSON data export
+- [x] Zero-capital inference: free-tier provider chain + BYOK + response cache
+- [ ] Closed beta on Play Store
+- [ ] Urdu UI strings (the model already answers in Urdu)
+- [ ] Offline on-device model, RAG, daily briefings
+- [ ] Backend for accounts and sync — only if beta retention justifies it
+
+See `STATE.md` for the handover note, and `docs/` for tax provenance, regulatory posture,
+data sources and the beta launch plan.
 
 ---
 
