@@ -36,21 +36,29 @@ export class NoProviderError extends Error {
   }
 }
 
-async function readCache(key: string): Promise<string | null> {
+interface CacheEntry {
+  t: number;
+  text: string;
+  provider: ProviderId;
+}
+
+async function readCache(key: string): Promise<CacheEntry | null> {
   try {
     const raw = await getSetting(CACHE_PREFIX + key);
     if (!raw) return null;
-    const entry = JSON.parse(raw) as { t: number; text: string };
+    const entry = JSON.parse(raw) as Partial<CacheEntry>;
+    if (typeof entry.text !== 'string' || typeof entry.t !== 'number') return null;
     if (Date.now() - entry.t > CACHE_TTL_MS) return null;
-    return entry.text;
+    return { t: entry.t, text: entry.text, provider: entry.provider ?? 'openrouter' };
   } catch {
     return null;
   }
 }
 
-async function writeCache(key: string, text: string): Promise<void> {
+async function writeCache(key: string, text: string, provider: ProviderId): Promise<void> {
   try {
-    await setSetting(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), text }));
+    const entry: CacheEntry = { t: Date.now(), text, provider };
+    await setSetting(CACHE_PREFIX + key, JSON.stringify(entry));
   } catch {
     // A cache write failure must never break a successful answer.
   }
@@ -99,7 +107,7 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
   if (useCache) {
     const cached = await readCache(cacheKey(systemPrompt, messages));
     if (cached) {
-      return { text: cached, provider: preferredProvider ?? 'openrouter', cached: true, failedProviders: [] };
+      return { text: cached.text, provider: cached.provider, cached: true, failedProviders: [] };
     }
   }
 
@@ -118,7 +126,7 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
   for (const provider of ordered) {
     try {
       const text = await callProvider(provider.id, provider.model, provider.key, systemPrompt, messages);
-      if (useCache) await writeCache(cacheKey(systemPrompt, messages), text);
+      if (useCache) await writeCache(cacheKey(systemPrompt, messages), text, provider.id);
       return { text, provider: provider.id, cached: false, failedProviders };
     } catch (error) {
       failedProviders.push({

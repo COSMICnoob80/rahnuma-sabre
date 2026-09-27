@@ -1,12 +1,13 @@
 import { getHoldings, updateHoldingPrice } from '../database/db';
-import { Holding } from '../types';
+
+export { priceFreshness } from './priceFreshness';
+export type { PriceFreshness } from './priceFreshness';
 
 const YAHOO_HOSTS = [
   'https://query1.finance.yahoo.com/v8/finance/chart',
   'https://query2.finance.yahoo.com/v8/finance/chart',
 ];
 const CACHE_TTL_MS = 15 * 60 * 1000;
-const STALE_AFTER_MS = 60 * 60 * 1000;
 
 async function fetchPriceFromHost(host: string, ticker: string): Promise<number | null> {
   try {
@@ -28,34 +29,6 @@ async function fetchPrice(ticker: string): Promise<number | null> {
     if (price !== null) return price;
   }
   return null;
-}
-
-export interface PriceFreshness {
-  stale: boolean;
-  label: string;
-}
-
-// Quotes are indicative end-of-day data, not a live feed. Labelling staleness is
-// what keeps the portfolio screen honest when a fetch fails.
-export function priceFreshness(lastFetched: string | null, now: number = Date.now()): PriceFreshness {
-  if (!lastFetched) return { stale: true, label: 'Price not fetched yet' };
-
-  const fetchedMs = Date.parse(lastFetched.includes('T') ? lastFetched : `${lastFetched}Z`);
-  if (Number.isNaN(fetchedMs)) return { stale: true, label: 'Price freshness unknown' };
-
-  const ageMs = now - fetchedMs;
-  if (ageMs > 24 * 60 * 60 * 1000) {
-    return { stale: true, label: `As of ${new Date(fetchedMs).toLocaleDateString('en-PK')}` };
-  }
-  if (ageMs > STALE_AFTER_MS) {
-    const hours = Math.max(1, Math.round(ageMs / (60 * 60 * 1000)));
-    return { stale: true, label: `${hours}h old` };
-  }
-  return { stale: false, label: 'Up to date' };
-}
-
-export function isStaleQuote(holding: Holding, now: number = Date.now()): boolean {
-  return holding.current_price === null || priceFreshness(holding.last_fetched, now).stale;
 }
 
 export interface RefreshResult {
