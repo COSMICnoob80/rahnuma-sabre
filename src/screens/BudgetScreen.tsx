@@ -10,7 +10,7 @@ import {
   getExpenseByCategory, getSetting, setSetting
 } from '../database/db';
 import { Income, Expense } from '../types';
-import { formatPKR } from '../utils/calculators';
+import { formatPKR, todayLocal } from '../utils/calculators';
 
 const CATEGORIES = ['rent', 'food', 'transport', 'medical', 'misc', 'utilities', 'entertainment', 'education'];
 
@@ -63,7 +63,7 @@ export default function BudgetScreen() {
     if (!expenseAmount) { Alert.alert('Enter amount'); return; }
     const a = parseFloat(expenseAmount);
     if (isNaN(a) || a <= 0) { Alert.alert('Invalid amount'); return; }
-    await addExpense({ amount: a, category: expenseCategory, date: new Date().toISOString().split('T')[0] });
+    await addExpense({ amount: a, category: expenseCategory, date: todayLocal() });
     setExpenseAmount('');
     await load();
   };

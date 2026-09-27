@@ -10,6 +10,7 @@ import {
   capitalGainsSuperTaxNote,
   daysBetween,
   formatPKR,
+  todayLocal,
 } from '../src/utils/calculators.ts';
 
 // ---------- CGT: acquisition-date awareness (Finance Act 2025) ----------
@@ -145,4 +146,28 @@ test('daysBetween counts whole days and never goes negative', () => {
 
 test('formatPKR renders whole rupees', () => {
   assert.equal(formatPKR(1234567), 'Rs. 1,234,567');
+});
+
+// ---------- local date stamping ----------
+
+test('todayLocal: keeps the local calendar day, not the UTC day', () => {
+  // 00:30 local on the 1st. In PKT (UTC+5) this instant is 19:30 UTC on the
+  // previous month, which is exactly how a record ends up in the wrong month.
+  const justAfterMidnight = new Date(2026, 8, 1, 0, 30, 0);
+  assert.equal(todayLocal(justAfterMidnight), '2026-09-01');
+
+  // Same instant, a few hours later: still the 1st locally, and the stamp must
+  // not drift as the day progresses.
+  assert.equal(todayLocal(new Date(2026, 8, 1, 12, 0, 0)), '2026-09-01');
+  assert.equal(todayLocal(new Date(2026, 8, 1, 23, 59, 0)), '2026-09-01');
+});
+
+test('todayLocal: the last day of a month does not roll into the next one', () => {
+  assert.equal(todayLocal(new Date(2026, 8, 30, 23, 59, 0)), '2026-09-30');
+  assert.equal(todayLocal(new Date(2026, 11, 31, 23, 59, 0)), '2026-12-31');
+});
+
+test('todayLocal: pads single-digit months and days to keep SQL matching', () => {
+  assert.equal(todayLocal(new Date(2026, 0, 5, 10, 0, 0)), '2026-01-05');
+  assert.equal(todayLocal(new Date(2026, 10, 9, 10, 0, 0)), '2026-11-09');
 });

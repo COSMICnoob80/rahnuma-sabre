@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Holding, Expense, Income } from '../types';
+import { todayLocal } from '../utils/calculators';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -136,7 +137,7 @@ export async function addIncome(i: Omit<Income, 'id'>): Promise<number> {
   const d = await getDb();
   const r = await d.runAsync(
     'INSERT INTO income (source, amount, date) VALUES (?, ?, ?)',
-    i.source, i.amount, i.date || new Date().toISOString().split('T')[0]
+    i.source, i.amount, i.date || todayLocal()
   );
   return r.lastInsertRowId;
 }
