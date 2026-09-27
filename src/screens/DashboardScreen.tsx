@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { getHoldings, getTotalIncome, getExpenseTotalByMonth, getSetting } from '../database/db';
+import { getHoldings, getTotalIncomeByMonth, getExpenseTotalByMonth, getSetting } from '../database/db';
 import { Holding } from '../types';
 import { calculateFIRE, formatPKR } from '../utils/calculators';
 
@@ -23,7 +23,9 @@ export default function DashboardScreen() {
   const load = useCallback(async () => {
     const h = await getHoldings();
     setHoldings(h);
-    const inc = await getTotalIncome();
+    // Income and expenses must cover the same month, or the savings rate and
+    // the FIRE contribution are both wrong.
+    const inc = await getTotalIncomeByMonth(month);
     setTotalIncome(inc);
     const exp = await getExpenseTotalByMonth(month);
     setMonthlyExpenses(exp);
@@ -85,7 +87,7 @@ export default function DashboardScreen() {
           {savingsRate.toFixed(1)}%
         </Text>
         <Text style={styles.subItem}>
-          Income: {formatPKR(totalIncome)} | Spent: {formatPKR(monthlyExpenses)}
+          This month: {formatPKR(totalIncome)} income, {formatPKR(monthlyExpenses)} spent
         </Text>
       </View>
 

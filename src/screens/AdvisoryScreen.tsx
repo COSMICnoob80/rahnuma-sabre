@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   FlatList, KeyboardAvoidingView, Platform, Alert, ScrollView
 } from 'react-native';
-import { getHoldings, getTotalIncome, getExpenseTotalByMonth } from '../database/db';
+import { getHoldings, getTotalIncomeByMonth, getExpenseTotalByMonth } from '../database/db';
 import { hasAnyProvider, askAdvisor, ChatMessage } from '../services/llmService';
 import {
   PersonaId,
@@ -48,9 +48,9 @@ export default function AdvisoryScreen() {
 
   const buildContext = async (): Promise<string> => {
     const holdings = await getHoldings();
-    const income = await getTotalIncome();
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const income = await getTotalIncomeByMonth(month);
     const expenses = await getExpenseTotalByMonth(month);
 
     const portfolio = holdings
@@ -63,7 +63,7 @@ export default function AdvisoryScreen() {
 
     const savingsRate = income > 0 ? (((income - expenses) / income) * 100).toFixed(1) : '0';
 
-    return `[User Portfolio]\n${portfolio || 'No holdings recorded'}\n\n[Monthly Budget]\nIncome: Rs.${income}\nExpenses: Rs.${expenses}\nSavings Rate: ${savingsRate}%`;
+    return `[User Portfolio]\n${portfolio || 'No holdings recorded'}\n\n[Current Month Budget]\nIncome: Rs.${income}\nExpenses: Rs.${expenses}\nSavings Rate: ${savingsRate}%`;
   };
 
   const pushAssistant = (message: Message) => setMessages((prev) => [...prev, message]);
