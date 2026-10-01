@@ -45,7 +45,7 @@ tells you to buy or sell.
 
 ```bash
 npm start          # Expo dev server
-npm test           # 38 unit tests, no test dependencies (Node's built-in runner)
+npm test           # 49 unit tests, no test dependencies (Node's built-in runner)
 npm run ts:check   # TypeScript, strict
 ```
 
@@ -64,7 +64,8 @@ src/
     llmAdapters.ts    Pure request/response shaping (unit tested)
     llmService.ts     Provider fallback chain + response cache
     personaService.ts Personas, deterministic router, buy/sell guard
-    psxService.ts     Price fetch, freshness, staleness
+    priceFreshness.ts Quote staleness labelling (pure, unit tested)
+    psxService.ts     Price fetch with fallback host
     dataService.ts    JSON export
   database/db.ts  SQLite schema + queries
   utils/
@@ -74,6 +75,37 @@ src/
 tests/            Node built-in test runner
 docs/             TAX-RULES, SECP-POSTURE, DATA-SOURCES, BETA-LAUNCH-POST
 ```
+
+---
+
+## Silent-wrong-answer bugs already fixed
+
+Read this before trusting any number the app displays. None of these crashed; each returned a
+plausible but incorrect number, and all were found by reading code rather than by testing.
+
+- **CGT rewritten** to the Finance Act 2025 / NCCPL structure. It is now
+  acquisition-date-driven: flat 15% for anything bought on/after 1 Jul 2024, progressive
+  12.5% → 0% for Jul 2022 – Jun 2024, exempt before Jul 2013. The old code applied the
+  pre-2024 slab from holding days alone and would have charged 0% on a six-year hold.
+  `purchase_date` was added to holdings and is captured in the add-holding form.
+- **PIN removal no longer bricks the app.** It used to write an empty `pin_hash` while
+  `hasPin()` tested for non-null, leaving the app permanently locked. The PIN now lives in
+  SecureStore with a 30-second lockout after five wrong attempts.
+- **Savings rate** was comparing one month of spending against *all-time* income, inflating
+  the rate and the FIRE monthly contribution roughly threefold for anyone with a few months
+  logged. Dashboard and Advisory now use current-month income on both sides.
+- **Record dates** were stamped with `toISOString()` (UTC) while month queries used a local
+  month key. In PKT, entries made between midnight and 05:00 landed in the previous day, and
+  on the 1st of a month, in the previous month. Now stamped with `todayLocal()`.
+- **Cached advisory answers** reported whichever provider was preferred rather than the one
+  that actually answered. The cache now stores the real provider.
+- **Price freshness** parsed SQLite's space-separated `YYYY-MM-DD HH:MM:SS` as `NaN`, so every
+  refreshed holding displayed "freshness unknown". Extracted to `priceFreshness.ts` and tested.
+- **Dashboard FIRE progress** read a `savings` state variable that was never assigned, so it
+  always rendered 0%. It now uses real net worth and honours the saved `fire_target`.
+
+The pattern: financial maths and date handling are where this app is either right or quietly
+wrong. Anything touching those needs a test before it ships.
 
 ## Cost model (why this runs at zero capital)
 
