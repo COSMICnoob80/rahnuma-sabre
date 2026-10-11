@@ -5,7 +5,9 @@ export type PersonaId =
   | 'quant'
   | 'pakistani_street'
   | 'fire_architect'
-  | 'risk_manager';
+  | 'risk_manager'
+  | 'munger'
+  | 'habib';
 
 export interface Persona {
   id: PersonaId;
@@ -26,7 +28,7 @@ export const PERSONAS: Persona[] = [
   },
   {
     id: 'oracle',
-    name: 'The Oracle',
+    name: 'Warren Buffett',
     emoji: '🏛️',
     tagline: 'Value investing, margin of safety',
     philosophy:
@@ -34,7 +36,7 @@ export const PERSONAS: Persona[] = [
   },
   {
     id: 'fundamentalist',
-    name: 'The Fundamentalist',
+    name: 'Peter Lynch',
     emoji: '📈',
     tagline: 'Buy what you know',
     philosophy:
@@ -42,7 +44,7 @@ export const PERSONAS: Persona[] = [
   },
   {
     id: 'quant',
-    name: 'The Quant',
+    name: 'Ray Dalio',
     emoji: '📊',
     tagline: 'All-weather allocation',
     philosophy:
@@ -58,19 +60,35 @@ export const PERSONAS: Persona[] = [
   },
   {
     id: 'fire_architect',
-    name: 'FIRE Architect',
+    name: 'Jim Simons',
     emoji: '🔥',
-    tagline: 'Savings rate and freedom math',
+    tagline: 'Quantitative edge, systematic discipline',
     philosophy:
-      'You optimise for financial independence: savings rate, expense structure, withdrawal-rate safety, inflation-adjusted real returns, and the number of years to freedom. You are ruthless about recurring costs and lifestyle creep, and you show the arithmetic rather than asserting a conclusion.',
+      'You think like Jim Simons and Renaissance Technologies. You trust mathematics, data, and systematic discipline over gut instinct. You believe markets have patterns that can be exploited with rigor, patience, and relentless process — but you are humble about the limits of any model. You show the arithmetic and the evidence, not bravado.',
   },
   {
     id: 'risk_manager',
-    name: 'Risk Manager',
+    name: 'Michael Burry',
     emoji: '⚠️',
-    tagline: 'Tail risk and antifragility',
+    tagline: 'Tail risk, deep value, and the big short',
     philosophy:
-      'You think like Nassim Taleb. You assume crises are certain and ask what survives them. You focus on tail risk, concentration, liquidity, sequence-of-returns risk, ruin versus drawdown, and barbell structures. You are blunt about what could permanently destroy capital.',
+      'You think like Michael Burry. You look for what is genuinely mispriced, you assume crises are certain, and you ask what survives them. You focus on tail risk, concentration done right, liquidity, and the courage to be wrong for a long time before being right. You are blunt about what could permanently destroy capital.',
+  },
+  {
+    id: 'munger',
+    name: 'Charlie Munger',
+    emoji: '🧠',
+    tagline: 'Mental models and multidisciplinary thinking',
+    philosophy:
+      'You think like Charlie Munger. You reason across disciplines — psychology, physics, economics, history — to find the simplest robust answer. You emphasize inverting problems, avoiding stupidity rather than seeking brilliance, and the power of patience and compounding. You are direct, aphoristic, and unsentimental.',
+  },
+  {
+    id: 'habib',
+    name: 'R.F. Habib',
+    emoji: '🇵🇰',
+    tagline: 'Pakistani market realism and prudence',
+    philosophy:
+      'You are the voice of a seasoned Pakistani investor who has lived through bull runs, crashes, currency crises, and political upheaval. You value capital preservation, dividend-paying PSX stalwarts, and realistic return expectations over hype. You speak plainly about what works for ordinary Pakistanis — and what is marketed to them.',
   },
 ];
 
@@ -102,27 +120,35 @@ interface RouteRule {
 const ROUTE_RULES: RouteRule[] = [
   {
     persona: 'risk_manager',
-    keywords: ['risk', 'crash', 'disaster', 'worst case', 'what if', 'black swan', 'safe', 'lose everything', 'drawdown', 'hedge'],
+    keywords: ['risk', 'crash', 'disaster', 'worst case', 'what if', 'black swan', 'safe', 'lose everything', 'drawdown', 'hedge', 'short', 'overvalued', 'bubble'],
   },
   {
     persona: 'fire_architect',
-    keywords: ['fire', 'retire', 'retirement', 'savings rate', 'expense', 'budget', 'freedom', 'how long', 'years to', 'lean fire'],
+    keywords: ['quant', 'algorithm', 'systematic', 'model', 'backtest', 'edge', 'data-driven', 'pattern', 'renaissance'],
   },
   {
     persona: 'pakistani_street',
-    keywords: ['ipo', 'cdc', 'nccpl', 'dha', 'cgt', 'psx', 'atl', 'filer', 'broker', 'trec', 'mutual fund', 'bonus share', 'book building', 'dividend tax', 'kse'],
+    keywords: ['ipo', 'cdc', 'nccpl', 'dha', 'cgt', 'psx', 'atl', 'filer', 'broker', 'trec', 'mutual fund', 'bonus share', 'book building', 'dividend tax', 'kse', 'pakistan'],
   },
   {
     persona: 'quant',
-    keywords: ['allocat', 'diversif', 'rebalance', 'portfolio mix', 'correlation', 'asset class', 'risk parity', 'split'],
+    keywords: ['allocat', 'diversif', 'rebalance', 'portfolio mix', 'correlation', 'asset class', 'risk parity', 'split', 'all-weather'],
   },
   {
     persona: 'oracle',
-    keywords: ['should i buy', 'should i sell', 'worth buying', 'intrinsic value', 'moat', 'undervalued', 'overvalued', 'hold or', 'long term'],
+    keywords: ['should i buy', 'should i sell', 'worth buying', 'intrinsic value', 'moat', 'undervalued', 'overvalued', 'hold or', 'long term', 'value invest'],
   },
   {
     persona: 'fundamentalist',
     keywords: ['evaluate', 'analyze', 'analyse', 'fundamentals', 'company', 'earnings', 'pe ratio', 'p/e', 'growth story', 'research'],
+  },
+  {
+    persona: 'munger',
+    keywords: ['mental model', 'psychology', 'invert', 'circle of competence', 'wisdom', 'discipline', 'patience', 'compounding'],
+  },
+  {
+    persona: 'habib',
+    keywords: ['dividend', 'saving', 'savings rate', 'retire', 'retirement', 'preserve', 'conservative', 'ordinary', 'retail', 'salary', 'household', 'inflation', 'currency', 'when can i', 'how do i improve'],
   },
 ];
 
@@ -163,7 +189,7 @@ export function enforceNoDirective(text: string): { text: string; violated: bool
   return { text: `${text}\n\n${DIRECTIVE_CORRECTION}`, violated: true };
 }
 
-export const COUNCIL_DEBATE_PERSONAS: PersonaId[] = ['oracle', 'risk_manager'];
+export const COUNCIL_DEBATE_PERSONAS: PersonaId[] = ['oracle', 'munger', 'risk_manager'];
 
 export function buildCouncilSynthesisPrompt(question: string, responses: { name: string; text: string }[]): string {
   const joined = responses.map((r) => `[${r.name}]\n${r.text}`).join('\n\n');

@@ -16,11 +16,11 @@ import {
 
 // ---------- deterministic routing ----------
 
-test('router: "should I buy" goes to The Oracle', () => {
+test('router: "should I buy" goes to Warren Buffett', () => {
   assert.equal(routePersona('Should I buy LUCK at this price?').persona, 'oracle');
 });
 
-test('router: allocation questions go to The Quant', () => {
+test('router: allocation questions go to Ray Dalio', () => {
   assert.equal(routePersona('How should I diversify my allocation?').persona, 'quant');
   assert.equal(routePersona('I want to rebalance across asset classes').persona, 'quant');
 });
@@ -30,17 +30,17 @@ test('router: local mechanics go to Pakistani Street', () => {
   assert.equal(routePersona('Explain PSX book building for the IPO').persona, 'pakistani_street');
 });
 
-test('router: retirement questions go to FIRE Architect', () => {
-  assert.equal(routePersona('How do I improve my savings rate?').persona, 'fire_architect');
-  assert.equal(routePersona('When can I retire?').persona, 'fire_architect');
+test('router: retirement questions go to R.F. Habib', () => {
+  assert.equal(routePersona('How do I improve my savings rate?').persona, 'habib');
+  assert.equal(routePersona('When can I retire?').persona, 'habib');
 });
 
-test('router: risk questions go to Risk Manager', () => {
+test('router: risk questions go to Michael Burry', () => {
   assert.equal(routePersona('What if the market crashes 40%?').persona, 'risk_manager');
   assert.equal(routePersona('How much tail risk am I carrying?').persona, 'risk_manager');
 });
 
-test('router: company analysis goes to The Fundamentalist', () => {
+test('router: company analysis goes to Peter Lynch', () => {
   assert.equal(routePersona('Evaluate Meezan Bank fundamentals').persona, 'fundamentalist');
 });
 
@@ -62,9 +62,9 @@ test('router: every persona id is resolvable', () => {
   assert.equal(personaById('nonexistent' as any).id, 'rahnuma_default');
 });
 
-test('council debate uses two distinct personas', () => {
-  assert.equal(COUNCIL_DEBATE_PERSONAS.length, 2);
-  assert.equal(new Set(COUNCIL_DEBATE_PERSONAS).size, 2);
+test('council debate uses three distinct personas', () => {
+  assert.equal(COUNCIL_DEBATE_PERSONAS.length, 3);
+  assert.equal(new Set(COUNCIL_DEBATE_PERSONAS).size, 3);
 });
 
 // ---------- Principle XVI enforced in code ----------
@@ -92,7 +92,7 @@ test('guard: a violation appends the correction without deleting the answer', ()
 
 test('system prompt carries the persona and the hard rules', () => {
   const prompt = buildSystemPrompt('risk_manager');
-  assert.ok(prompt.includes('Risk Manager'));
+  assert.ok(prompt.includes('Michael Burry'));
   assert.ok(prompt.includes('Never tell the user to buy or sell anything'));
   assert.ok(prompt.includes('Urdu'));
 });

@@ -227,14 +227,14 @@ When a build agent enters this directory, it should:
 | **Product Auditor** | `agents/product-auditor.md` | Feature completeness, production-readiness, gap analysis |
 | **UX Reviewer** | `agents/ux-reviewer.md` | Interface quality, Urdu-first experience, onboarding, clarity |
 | **Competitive Analyst** | `agents/competitive-analyst.md` | Market positioning, competitor feature gaps, differentiation |
-| **Clinical Safety** | `agents/clinical-safety.md` | Financial-advice guardrails, no-buy/sell enforcement, SECP compliance |
+| **Compliance Officer** | `agents/compliance-officer.md` | Financial-advice guardrails, no-buy/sell enforcement, SECP compliance |
 | **QA** | `agents/qa.md` | Final review, release-readiness, red-line checks |
 
 ### Quick Routing
 
 - **"Is this production-ready?"** → Load `agents/product-auditor.md`
 - **"Audit the app"** → Load `agents/director.md` (it orchestrates the rest)
-- **"Can we post this to r/pakistan?"** → Load `agents/competitive-analyst.md` + `agents/clinical-safety.md`
+- **"Can we post this to r/pakistan?"** → Load `agents/competitive-analyst.md` + `agents/compliance-officer.md`
 - **"Is this safe to ship?"** → Load `agents/qa.md`
 
 ### Studio Principles
