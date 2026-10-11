@@ -1,13 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, RefreshControl
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getHoldings, addHolding, deleteHolding } from '../database/db';
-import { Holding, HoldingWithGain } from '../types';
+import { Holding } from '../types';
 import { formatPKR } from '../utils/calculators';
 import { refreshAllPrices, priceFreshness } from '../services/psxService';
+import { colors } from '../theme/colors';
+import { spacing, radius } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { Card, Button, Input, EmptyState, LoadingState } from '../components';
 
 const SECTOR_MAP: Record<string, string> = {
   LUCK: 'Cement', OGDC: 'OGMC', HBL: 'Bank', MEBL: 'Bank', UBL: 'Bank',
@@ -30,10 +33,12 @@ export default function PortfolioScreen() {
   const [price, setPrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
   const load = useCallback(async () => {
     setHoldings(await getHoldings());
+    setLoading(false);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -98,49 +103,55 @@ export default function PortfolioScreen() {
     const sec = getSector(h.ticker);
     sectorData[sec] = (sectorData[sec] || 0) + (h.current_price ?? h.avg_buy_price) * h.quantity;
   });
-  const sectorColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+  const sectorColors = [colors.accent, colors.success, colors.warning, colors.danger, '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <LoadingState label="Loading portfolio..." />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
     >
       {/* Summary */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Portfolio Value</Text>
-        <Text style={styles.summaryValue}>{formatPKR(totalValue)}</Text>
-        <Text style={[styles.gainText, { color: totalGain >= 0 ? '#22c55e' : '#ef4444' }]}>
+      <Card style={styles.summaryCard}>
+        <Text style={typography.sectionTitle}>Portfolio Value</Text>
+        <Text style={typography.display}>{formatPKR(totalValue)}</Text>
+        <Text style={[typography.bodyStrong, { color: totalGain >= 0 ? colors.success : colors.danger }]}>
           {totalGain >= 0 ? '+' : ''}{formatPKR(totalGain)} ({totalGainPct.toFixed(2)}%)
         </Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={handleRefreshPrices}>
-          <Text style={styles.refreshBtnText}>Refresh Prices</Text>
-        </TouchableOpacity>
-      </View>
+        <Button label="Refresh Prices" onPress={handleRefreshPrices} style={styles.refreshBtn} />
+      </Card>
 
       {/* Pie Chart (simple sector bars) */}
       {holdings.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Allocation by Sector</Text>
+        <Card>
+          <Text style={typography.sectionTitle}>Allocation by Sector</Text>
           {Object.entries(sectorData).map(([sector, val], i) => {
             const pct = (val / totalValue) * 100;
             return (
               <View key={sector} style={styles.sectorRow}>
                 <View style={[styles.sectorDot, { backgroundColor: sectorColors[i % sectorColors.length] }]} />
-                <Text style={styles.sectorName}>{sector}</Text>
+                <Text style={typography.caption}>{sector}</Text>
                 <View style={styles.sectorBarBg}>
                   <View style={[styles.sectorBarFill, { width: `${pct}%`, backgroundColor: sectorColors[i % sectorColors.length] }]} />
                 </View>
-                <Text style={styles.sectorPct}>{pct.toFixed(1)}%</Text>
+                <Text style={typography.caption}>{pct.toFixed(1)}%</Text>
               </View>
             );
           })}
-        </View>
+        </Card>
       )}
 
       {/* Holdings List */}
-      <View style={styles.card}>
+      <Card>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Holdings</Text>
+          <Text style={typography.sectionTitle}>Holdings</Text>
           <TouchableOpacity onPress={() => setShowAdd(!showAdd)}>
             <Text style={styles.addBtn}>{showAdd ? 'Cancel' : '+ Add'}</Text>
           </TouchableOpacity>
@@ -148,21 +159,17 @@ export default function PortfolioScreen() {
 
         {showAdd && (
           <View style={styles.addForm}>
-            <TextInput style={styles.input} placeholder="Ticker" placeholderTextColor="#64748b" value={ticker} onChangeText={setTicker} autoCapitalize="characters" />
-            <TextInput style={styles.input} placeholder="Quantity" placeholderTextColor="#64748b" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" />
-            <TextInput style={styles.input} placeholder="Avg Buy Price (PKR)" placeholderTextColor="#64748b" value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
-            <TextInput style={styles.input} placeholder="Purchase date (YYYY-MM-DD, optional)" placeholderTextColor="#64748b" value={purchaseDate} onChangeText={setPurchaseDate} autoCapitalize="none" />
-            <Text style={styles.formHint}>The purchase date decides your capital gains tax rate.</Text>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleAdd}>
-              <Text style={styles.submitBtnText}>Add Holding</Text>
-            </TouchableOpacity>
+            <Input placeholder="Ticker" value={ticker} onChangeText={setTicker} autoCapitalize="characters" />
+            <Input placeholder="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" />
+            <Input placeholder="Avg Buy Price (PKR)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
+            <Input placeholder="Purchase date (YYYY-MM-DD, optional)" value={purchaseDate} onChangeText={setPurchaseDate} autoCapitalize="none" />
+            <Text style={typography.small}>The purchase date decides your capital gains tax rate.</Text>
+            <Button label="Add Holding" onPress={handleAdd} />
           </View>
         )}
-
         {holdings.length === 0 && (
-          <Text style={styles.emptyText}>No holdings yet. Add your first stock!</Text>
+          <EmptyState message="No holdings yet" hint="Add your first stock to get started." />
         )}
-
         {holdings.map(h => {
           const currentPrice = h.current_price ?? h.avg_buy_price;
           const currentValue = currentPrice * h.quantity;
@@ -173,85 +180,60 @@ export default function PortfolioScreen() {
           return (
             <TouchableOpacity key={h.id} style={styles.holdingItem} onLongPress={() => h.id && handleDelete(h.id)}>
               <View style={styles.holdingLeft}>
-                <Text style={styles.ticker}>{h.ticker}</Text>
-                <Text style={styles.holdingDetail}>{h.quantity} shares @ Rs. {h.avg_buy_price.toFixed(0)}</Text>
+                <Text style={typography.bodyStrong}>{h.ticker}</Text>
+                <Text style={typography.small}>{h.quantity} shares @ Rs. {h.avg_buy_price.toFixed(0)}</Text>
                 <Text style={[styles.freshnessLabel, freshness.stale && styles.freshnessStale]}>
                   {freshness.label}
                   {!h.current_price ? ' · showing buy price' : ''}
                 </Text>
               </View>
               <View style={styles.holdingRight}>
-                <Text style={styles.holdingValue}>{formatPKR(currentValue)}</Text>
-                <Text style={[styles.holdingGain, { color: gain >= 0 ? '#22c55e' : '#ef4444' }]}>
+                <Text style={typography.bodyStrong}>{formatPKR(currentValue)}</Text>
+                <Text style={[typography.captionStrong, { color: gain >= 0 ? colors.success : colors.danger }]}>
                   {gain >= 0 ? '+' : ''}{formatPKR(gain)} ({gainPct.toFixed(1)}%)
                 </Text>
               </View>
             </TouchableOpacity>
           );
         })}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628', padding: 16 },
+  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
   summaryCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 24,
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
-  summaryLabel: { color: '#94a3b8', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-  summaryValue: { color: '#e2e8f0', fontSize: 36, fontWeight: '700', marginVertical: 4 },
-  gainText: { fontSize: 16, fontWeight: '600' },
-  card: { backgroundColor: '#1e293b', borderRadius: 16, padding: 20, marginBottom: 12 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  addBtn: { color: '#3b82f6', fontSize: 15, fontWeight: '600' },
-  addForm: { marginBottom: 16 },
-  input: {
-    backgroundColor: '#334155',
-    color: '#e2e8f0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    fontSize: 15,
+  refreshBtn: {
+    marginTop: spacing.md,
+    alignSelf: 'stretch',
   },
-  submitBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
-  submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  formHint: { color: '#64748b', fontSize: 11, marginBottom: 8 },
-  freshnessLabel: { color: '#22c55e', fontSize: 10, marginTop: 3 },
-  freshnessStale: { color: '#f59e0b' },
-  refreshBtn: { backgroundColor: '#3b82f6', padding: 10, borderRadius: 10, marginTop: 12, alignSelf: 'stretch', alignItems: 'center' },
-  refreshBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  emptyText: { color: '#64748b', textAlign: 'center', paddingVertical: 24 },
+  addBtn: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  addForm: { marginBottom: spacing.lg },
+  freshnessLabel: { color: colors.success, fontSize: 10, marginTop: 3 },
+  freshnessStale: { color: colors.warning },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   holdingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: colors.border,
   },
   holdingLeft: {},
-  ticker: { color: '#e2e8f0', fontSize: 16, fontWeight: '600' },
-  holdingDetail: { color: '#64748b', fontSize: 12, marginTop: 2 },
   holdingRight: { alignItems: 'flex-end' },
-  holdingValue: { color: '#e2e8f0', fontSize: 15, fontWeight: '600' },
-  holdingGain: { fontSize: 13, fontWeight: '500', marginTop: 2 },
-  sectorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  sectorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  sectorName: { color: '#94a3b8', fontSize: 13, width: 70 },
+  sectorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  sectorDot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.sm },
   sectorBarBg: {
     flex: 1,
-    backgroundColor: '#334155',
+    backgroundColor: colors.border,
     borderRadius: 4,
     height: 8,
-    marginHorizontal: 8,
+    marginHorizontal: spacing.sm,
     overflow: 'hidden',
   },
   sectorBarFill: { height: '100%', borderRadius: 4 },
-  sectorPct: { color: '#94a3b8', fontSize: 12, width: 40, textAlign: 'right' },
 });
