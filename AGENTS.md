@@ -198,3 +198,48 @@ https://arxiv.org/abs/2412.20138
 ---
 
 *Agents are defined. Routing is specified. Implementation begins when Phase 1 starts.*
+
+## Cross-agent handoff (Command Code ⇄ Hermes)
+
+Read `.handoff/STATE.md` before starting work. It records what the other agent was doing, what changed on disk, and the exact next action. Append your own handoff there before stopping.
+
+---
+
+## Studio Agent System (external build team)
+
+This section is the entry point for build/orchestration agents (Hermes, Command Code,
+OpenCode) working in this directory. It is separate from the in-app `rahnuma_advisor`
+agent architecture defined above — that is the product; this is the team that builds it.
+
+### How to Use
+
+When a build agent enters this directory, it should:
+1. Read this section to understand the studio structure
+2. Identify which role(s) the task requires
+3. Load the corresponding persona file(s) from `agents/`
+4. Execute the task using the persona's expertise and guidelines
+
+### Studio Roles
+
+| Role | Persona File | Triggers |
+|------|-------------|----------|
+| **Director** | `agents/director.md` | Overall coordination, pipeline orchestration, quality gates, final approval |
+| **Product Auditor** | `agents/product-auditor.md` | Feature completeness, production-readiness, gap analysis |
+| **UX Reviewer** | `agents/ux-reviewer.md` | Interface quality, Urdu-first experience, onboarding, clarity |
+| **Competitive Analyst** | `agents/competitive-analyst.md` | Market positioning, competitor feature gaps, differentiation |
+| **Clinical Safety** | `agents/clinical-safety.md` | Financial-advice guardrails, no-buy/sell enforcement, SECP compliance |
+| **QA** | `agents/qa.md` | Final review, release-readiness, red-line checks |
+
+### Quick Routing
+
+- **"Is this production-ready?"** → Load `agents/product-auditor.md`
+- **"Audit the app"** → Load `agents/director.md` (it orchestrates the rest)
+- **"Can we post this to r/pakistan?"** → Load `agents/competitive-analyst.md` + `agents/clinical-safety.md`
+- **"Is this safe to ship?"** → Load `agents/qa.md`
+
+### Studio Principles
+
+- **Verify on disk, never from memory.** Read the actual file before claiming its state.
+- **No sycophancy.** Flag gaps plainly; a polished-looking app with a broken core is worse than an honest prototype.
+- **Offline-first is the moat.** Rahnuma's differentiation is on-device, Urdu-first, no-advice. Do not dilute it to chase competitor features.
+- **Smallest viable change.** Cite files you touch.
