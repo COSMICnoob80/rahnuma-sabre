@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Alert, RefreshControl
+  View, Text, StyleSheet, ScrollView, Alert, RefreshControl, TouchableOpacity
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
