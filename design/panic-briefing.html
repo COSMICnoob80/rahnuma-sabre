@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rahnuma Sabre — Panic Day Briefing</title>
+<style>
+  :root{
+    --bg:            oklch(0.135 0.012 250);
+    --surface:       oklch(0.185 0.014 250);
+    --surface-2:     oklch(0.228 0.017 250);
+    --fg:            oklch(0.94 0.008 250);
+    --muted:         oklch(0.64 0.020 250);
+    --border:        oklch(0.27 0.016 250);
+    --accent:        oklch(0.80 0.160 162);
+    --danger:        oklch(0.72 0.190 22);
+    --danger-ink:    oklch(0.95 0.020 30);
+    --danger-surface:oklch(0.205 0.045 22);
+    --danger-border: oklch(0.40 0.100 22);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+    --urdu: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", "Segoe UI", system-ui, sans-serif;
+    --r-card: 20px;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin: 0; }
+  body{
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 28px 16px;
+    background: oklch(0.095 0.012 250);
+    font-family: var(--sans);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- iPhone-style frame ---------- */
+  .phone{
+    width: 375px;
+    height: 820px;
+    padding: 12px;
+    background: oklch(0.06 0.008 250);
+    border: 1px solid oklch(0.30 0.020 250);
+    border-radius: 54px;
+    box-shadow: 0 34px 80px -32px oklch(0.02 0.010 250);
+  }
+  .screen{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border-radius: 42px;
+    overflow: hidden;
+  }
+  .island{
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 104px; height: 28px;
+    border-radius: 999px;
+    background: oklch(0.05 0.005 250);
+    z-index: 6;
+    pointer-events: none;
+  }
+  .home{
+    position: absolute;
+    bottom: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 4px;
+    border-radius: 999px;
+    background: oklch(0.60 0.020 250);
+    opacity: .45;
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  /* ---------- scrollable content ---------- */
+  .stack{
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 56px 14px 14px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .stack::-webkit-scrollbar{ display: none; }
+
+  /* ---------- header ---------- */
+  .hero{ padding: 2px 2px 0; }
+  .hero-top{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .brand{
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .clock{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .greeting{
+    margin: 12px 0 0;
+    font-size: 25px;
+    line-height: 1.18;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  .greet-ur{
+    font-family: var(--urdu);
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .greet-sep{
+    color: var(--muted);
+    font-weight: 400;
+    margin: 0 8px;
+  }
+  .hero-sub{
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* ---------- alert bar ---------- */
+  .alert{
+    background: var(--danger-surface);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--r-card);
+    padding: 13px 15px 14px;
+  }
+  .alert-top{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .alert-badge{
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--danger);
+  }
+  .alert-delta{
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--danger);
+    font-variant-numeric: tabular-nums;
+  }
+  .alert-msg{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--danger-ink);
+  }
+  .alert-quote{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--danger-border);
+  }
+  .quote-name{
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: var(--danger-ink);
+    opacity: .82;
+  }
+  .quote-price{
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .fresh{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: oklch(0.30 0.050 22);
+    color: var(--danger-ink);
+    font-size: 11px;
+    opacity: .8;
+  }
+  .fresh .dot{
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex: none;
+  }
+
+  /* ---------- cards ---------- */
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 15px 15px 16px;
+  }
+  .card h2{
+    margin: 0 0 13px;
+    font-size: 15px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    color: var(--fg);
+  }
+
+  .plan-row, .budget-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .plan-row{ padding-bottom: 10px; }
+  .budget-row{
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .label{
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .mono{
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: -.01em;
+    white-space: nowrap;
+  }
+  .plan-amount{
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .budget-amount{
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .ok{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .ok-icon{ flex: none; display: block; }
+
+  /* ---------- fixed-amount table ---------- */
+  .fx-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+  }
+  .fx-row + .fx-row{ border-top: 1px solid var(--border); }
+  .fx-label{
+    font-size: 11.5px;
+    color: var(--muted);
+    flex: none;
+  }
+  .fx-value{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--fg);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .caption{
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* ---------- streak ---------- */
+  .dots{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .dot{
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+
+  /* ---------- pinned contract bar ---------- */
+  .contract{
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px 30px;
+    background: oklch(0.155 0.013 250);
+    border-top: 1px solid var(--border);
+  }
+  .contract p{
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .btn-secondary{
+    appearance: none;
+    width: 100%;
+    min-height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .12s ease, border-color .12s ease;
+  }
+  .btn-secondary:hover{
+    background: oklch(0.265 0.018 250);
+    border-color: oklch(0.34 0.020 250);
+  }
+  .btn-secondary:active{
+    background: oklch(0.305 0.022 250);
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-secondary:focus-visible{
+    outline-offset: 3px;
+    border-radius: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn-secondary{ transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="phone" data-od-id="panic-briefing-phone">
+    <div class="screen">
+      <div class="island" aria-hidden="true"></div>
+
+      <main class="stack">
+        <header class="hero" data-od-id="panic-briefing-header">
+          <div class="hero-top">
+            <span class="brand">Rahnuma Sabre</span>
+            <span class="clock" aria-label="9:42 AM">09:42</span>
+          </div>
+          <h1 class="greeting" data-od-id="panic-briefing-heading">
+            <span class="greet-ur" lang="ur" dir="rtl">رسالة الاطمئنان</span><span class="greet-sep" aria-hidden="true">·</span><span class="greet-en">Calm Briefing</span>
+          </h1>
+          <p class="hero-sub">Facts for a rough open. No forecast, no advice.</p>
+        </header>
+
+        <div class="alert" data-od-id="panic-alert" role="note"
+             aria-label="Market alert: KSE-100 down 4.1 percent this morning. Live MIIETF quote PKR 182.40, two minutes old.">
+          <div class="alert-top">
+            <span class="alert-badge">KSE-100</span>
+            <span class="alert-delta">-4.1%</span>
+            <span class="alert-msg">Bloodbath morning</span>
+          </div>
+          <div class="alert-quote">
+            <span class="quote-name">MIIETF</span>
+            <span class="quote-price" data-od-id="panic-quote">PKR 182.40</span>
+            <span class="fresh"><span class="dot" aria-hidden="true"></span>quote: 2 min ago · live</span>
+          </div>
+        </div>
+
+        <section class="card" data-od-id="panic-plan-card"
+                 aria-label="Your plan, restated. Monthly SIP due today PKR 12,000. Spare capacity this month PKR 13,200. Plan is intact and affordable.">
+          <h2>Your plan, restated</h2>
+          <div class="plan-row">
+            <span class="label">Monthly SIP due today</span>
+            <span class="plan-amount">PKR 12,000</span>
+          </div>
+          <div class="budget-row">
+            <span class="label">Spare capacity this month</span>
+            <span class="budget-amount">PKR 13,200</span>
+          </div>
+          <div class="ok">
+            <svg class="ok-icon" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <circle cx="9" cy="9" r="8.2" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+              <path d="M5.3 9.2l2.5 2.5 5-5.3" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Plan is intact. Affordable.</span>
+          </div>
+        </section>
+
+        <section class="card" data-od-id="panic-fixed-amount-card"
+                 aria-label="What a fixed amount does in a falling market. Last month PKR 12,000 at 197.10 equals 60.9 units. Today at quote PKR 12,000 at 182.40 equals 65.8 units. Same rupees, more units by definition. No forecast stated.">
+          <h2>What a fixed amount does in a falling market</h2>
+          <div class="fx-row">
+            <span class="fx-label">Last month</span>
+            <span class="fx-value">PKR 12,000 @ 197.10 = 60.9 units</span>
+          </div>
+          <div class="fx-row">
+            <span class="fx-label">Today at quote</span>
+            <span class="fx-value">PKR 12,000 @ 182.40 = 65.8 units</span>
+          </div>
+          <p class="caption">Same rupees, more units — by definition. No forecast stated.</p>
+        </section>
+
+        <section class="card" data-od-id="panic-streak-card"
+                 aria-label="Your streak. Nine monthly builds, no skips since December 2025.">
+          <h2>Your streak</h2>
+          <div class="dots" role="img" aria-label="9 of 9 monthly builds completed">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <p class="caption">9 monthly builds · no skips since Dec 2025</p>
+        </section>
+      </main>
+
+      <footer class="contract" data-od-id="panic-contract-bar"
+              aria-label="Information only. Not investment advice. Rahnuma will never tell you to buy or sell.">
+        <p>Information only · Not investment advice · Rahnuma will never tell you to buy or sell</p>
+        <button class="btn-secondary" type="button" data-od-id="panic-close-button">Close briefing</button>
+      </footer>
+
+      <div class="home" aria-hidden="true"></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -93,3 +93,13 @@
 - [brief-ui] BriefingScreen + route + dashboard entry landed — tsc clean — commit "briefing screen: Panic Day Briefing UI per harvest pattern"
 
 - [brief-engine] briefing.ts + tests landed, 57 tests pass, tsc clean — 4daacd3
+
+## Beat: Panic Day Briefing (2026-10-21) — LANDED
+
+- WHY charter (docs/WHY.md) + Finqalab UI pattern harvest (docs/HARVEST-FINQALAB-UI.md, channel 2 public docs) committed (4251a0a).
+- Soldier BRIEF-ENGINE (90f2d59): src/utils/briefing.ts + 8 tests — pure math, no advisory fields.
+- Soldier BRIEF-UI (72d714f): BriefingScreen + native-stack route + dashboard "Morning briefing" entry.
+- Parent verified: 57/57 tests, tsc clean, red-line grep clean, SPINE checkpoints committed by both soldiers.
+- HTML artifact: design/panic-briefing.html (OpenDesign run 489b76ff, self-contained).
+- Soldier models: all execution tiers on deepseek-v4.1-flash (verified in run logs).
+- NEXT: APK rebuild → install on phone → beta post to r/FIREPakistan.
