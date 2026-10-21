@@ -89,3 +89,5 @@
 - **No return promises**
 - **Not a SECP-registered advisor** — must not present as one
 - **Offline-first is the moat** — do not dilute to chase competitor features
+
+- [brief-engine] briefing.ts + tests landed, 57 tests pass, tsc clean — 4daacd3
