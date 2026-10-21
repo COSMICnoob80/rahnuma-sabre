@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSX Wealth — Mobile Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: oklch(0.13 0.015 265);
+    --surface: oklch(0.18 0.02 265);
+    --surface-2: oklch(0.22 0.025 265);
+    --fg: oklch(0.96 0.005 265);
+    --muted: oklch(0.62 0.015 265);
+    --faint: oklch(0.48 0.015 265);
+    --border: oklch(0.24 0.02 265);
+    --accent: oklch(0.74 0.16 160);
+    --accent-tint: oklch(0.22 0.06 160);
+    --accent-soft: oklch(0.74 0.16 160 / 0.14);
+    --danger: oklch(0.70 0.17 25);
+    --danger-tint: oklch(0.22 0.05 25);
+    --blue: oklch(0.72 0.12 250);
+    --blue-tint: oklch(0.20 0.05 250);
+    --amber: oklch(0.78 0.13 85);
+    --amber-tint: oklch(0.22 0.05 85);
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 32px 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage {
+    position: relative;
+    padding: 8px;
+  }
+
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 40px 0 0 0;
+    background: radial-gradient(ellipse 60% 45% at 50% 38%, oklch(0.24 0.05 260 / 0.55), transparent 70%);
+    pointer-events: none;
+  }
+
+  .phone {
+    position: relative;
+    width: 395px;
+    padding: 10px;
+    border-radius: 54px;
+    background: oklch(0.10 0.01 270);
+    border: 1px solid oklch(0.26 0.02 270);
+    box-shadow:
+      0 40px 90px -20px oklch(0.05 0.02 270 / 0.8),
+      0 12px 32px -12px oklch(0.05 0.02 270 / 0.6),
+      inset 0 0 0 2px oklch(0.08 0.01 270);
+  }
+
+  .notch {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 26px;
+    border-radius: 999px;
+    background: oklch(0.06 0.01 270);
+    z-index: 5;
+  }
+
+  .screen {
+    position: relative;
+    width: 375px;
+    height: 820px;
+    border-radius: 44px;
+    overflow: hidden;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .statusbar {
+    height: 46px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 30px 6px;
+    color: var(--fg);
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .status-icons {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .signal {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 10px;
+  }
+
+  .signal span {
+    width: 2.5px;
+    border-radius: 1px;
+    background: var(--fg);
+  }
+
+  .signal span:nth-child(1) { height: 3px; }
+  .signal span:nth-child(2) { height: 5px; }
+  .signal span:nth-child(3) { height: 7px; }
+  .signal span:nth-child(4) { height: 10px; }
+
+  .carrier-net {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .battery {
+    width: 23px;
+    height: 11px;
+    border-radius: 3.5px;
+    border: 1.5px solid var(--faint);
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1.5px;
+  }
+
+  .battery::after {
+    content: "";
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 4px;
+    border-radius: 0 1px 1px 0;
+    background: var(--faint);
+  }
+
+  .battery-fill {
+    width: 82%;
+    height: 100%;
+    border-radius: 1.5px;
+    background: var(--accent);
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 12px;
+    scrollbar-width: none;
+  }
+
+  .content::-webkit-scrollbar { display: none; }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 2px 12px;
+  }
+
+  .greeting-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(140deg, var(--accent-tint), oklch(0.26 0.08 200));
+    border: 1px solid oklch(0.30 0.08 160);
+    display: grid;
+    place-items: center;
+    color: var(--fg);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .greeting {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .user-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+    margin-top: 2px;
+  }
+
+  .bell-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .bell-btn:hover { background: var(--surface-2); color: var(--fg); }
+  .bell-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .bell-dot {
+    position: absolute;
+    top: 10px;
+    right: 11px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    border: 1.5px solid var(--surface);
+  }
+
+  .hero-card {
+    background:
+      linear-gradient(160deg, oklch(0.22 0.055 165), oklch(0.17 0.02 265) 62%);
+    border: 1px solid oklch(0.30 0.07 165 / 0.45);
+    border-radius: 22px;
+    padding: 16px 16px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(0.65 0.12 160 / 0.5), transparent);
+  }
+
+  .hero-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .hero-updated {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--faint);
+  }
+
+  .hero-amount-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .hero-amount {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+
+  .pnl-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid oklch(0.74 0.16 160 / 0.35);
+    padding: 5px 9px;
+    border-radius: 999px;
+  }
+
+  .hero-spark {
+    display: block;
+    width: 100%;
+    height: 40px;
+    margin-top: 4px;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .stat-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 12px 14px 11px;
+  }
+
+  .stat-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .stat-icon svg { width: 17px; height: 17px; }
+
+  .icon-green { background: var(--accent-tint); color: var(--accent); }
+  .icon-blue { background: var(--blue-tint); color: var(--blue); }
+  .icon-amber { background: var(--amber-tint); color: var(--amber); }
+
+  .stat-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-top: 8px;
+  }
+
+  .stat-value .up { color: var(--accent); }
+  .stat-sub {
+    font-size: 10.5px;
+    color: var(--faint);
+    margin-top: 3px;
+  }
+
+  .fire-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 13px 16px 12px;
+    margin-top: 10px;
+  }
+
+  .fire-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .fire-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fire-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .fire-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+
+  .fire-bar-track {
+    height: 9px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .fire-bar-fill {
+    height: 100%;
+    width: 42%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, oklch(0.68 0.15 155), var(--accent));
+    position: relative;
+  }
+
+  .fire-bar-fill::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    background: linear-gradient(90deg, transparent, oklch(0.9 0.1 160 / 0.55));
+    border-radius: 0 999px 999px 0;
+  }
+
+  .fire-caption {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--faint);
+  }
+
+  .fire-caption strong {
+    color: var(--muted);
+    font-weight: 600;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 16px 2px 6px;
+  }
+
+  .section-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+
+  .see-all {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .see-all:hover { color: var(--accent); }
+  .see-all:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  .holdings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .holding-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+
+  .holding-row + .holding-row { border-top: 1px solid var(--border); }
+
+  .holding-left {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .ticker-chip {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+  }
+
+  .holding-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+
+  .holding-sector {
+    font-size: 10.5px;
+    color: var(--faint);
+    margin-top: 1px;
+  }
+
+  .holding-right {
+    text-align: right;
+  }
+
+  .holding-price {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .holding-change {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .up { color: var(--accent); }
+  .down { color: var(--danger); }
+
+  .tabbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    background: oklch(0.15 0.015 265);
+    border-top: 1px solid var(--border);
+    padding: 8px 8px 12px;
+  }
+
+  .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: var(--faint);
+    font-family: var(--sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+    min-width: 48px;
+    min-height: 44px;
+    transition: color 0.15s ease;
+  }
+
+  .tab-btn svg { width: 20px; height: 20px; }
+
+  .tab-btn:hover { color: var(--muted); }
+  .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+  .tab-btn.active { color: var(--accent); }
+
+  .tab-center { position: relative; }
+
+  .tab-center .tab-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: oklch(0.12 0.02 160);
+    justify-content: center;
+    box-shadow: 0 6px 18px -4px oklch(0.6 0.18 160 / 0.55);
+    border: 3px solid var(--bg);
+  }
+
+  .tab-center .tab-btn svg { width: 22px; height: 22px; }
+  .tab-center .tab-btn:hover { background: oklch(0.78 0.17 160); color: oklch(0.12 0.02 160); }
+
+  @media (max-height: 900px) {
+    body { padding: 12px 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <div class="status-icons">
+            <span class="carrier-net">5G</span>
+            <div class="signal" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="battery" aria-hidden="true"><div class="battery-fill"></div></div>
+          </div>
+        </div>
+
+        <main class="content">
+          <header class="app-header">
+            <div class="greeting-row">
+              <div class="avatar" aria-hidden="true">AK</div>
+              <div>
+                <div class="greeting">Assalam-o-Alaikum</div>
+                <div class="user-name">Ahmed Khan</div>
+              </div>
+            </div>
+            <button class="bell-btn" type="button" aria-label="Notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+              <span class="bell-dot" aria-hidden="true"></span>
+            </button>
+          </header>
+
+          <section class="hero-card" data-od-id="net-worth-card" aria-label="Net worth">
+            <div class="hero-label">
+              <span>Total Net Worth</span>
+              <span class="hero-updated">Updated just now</span>
+            </div>
+            <div class="hero-amount-row">
+              <span class="hero-amount">PKR 2,847,300</span>
+              <span class="pnl-badge">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M7 17 17 7"/><path d="M7 7h10v10"/>
+                </svg>
+                +12.4%
+              </span>
+            </div>
+            <svg class="hero-spark" viewBox="0 0 343 54" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="oklch(0.74 0.16 160 / 0.28)"/>
+                  <stop offset="100%" stop-color="oklch(0.74 0.16 160 / 0)"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,44 C28,41 40,38 62,39 C84,40 96,30 118,31 C140,32 152,24 174,22 C196,20 210,14 232,13 C254,12 266,8 288,6 C310,4 330,3 343,2 L343,54 L0,54 Z" fill="url(#sparkFill)"/>
+              <path d="M0,44 C28,41 40,38 62,39 C84,40 96,30 118,31 C140,32 152,24 174,22 C196,20 210,14 232,13 C254,12 266,8 288,6 C310,4 330,3 343,2" fill="none" stroke="oklch(0.74 0.16 160)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="343" cy="2" r="3.2" fill="oklch(0.74 0.16 160)"/>
+            </svg>
+          </section>
+
+          <div class="stats-row">
+            <section class="stat-card" data-od-id="pnl-card" aria-label="Portfolio profit and loss">
+              <div class="stat-head">
+                <div class="stat-icon icon-green" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>
+                  </svg>
+                </div>
+                <div class="stat-label">Portfolio P&amp;L</div>
+              </div>
+              <div class="stat-value"><span class="up">+12.4%</span></div>
+              <div class="stat-sub">All-time · +PKR 2.9L</div>
+            </section>
+
+            <section class="stat-card" data-od-id="savings-card" aria-label="Savings rate">
+              <div class="stat-head">
+                <div class="stat-icon icon-blue" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 5c-1.5 0-2.8 1-3.5 2.5C14.8 6 13.5 5 12 5 9.8 5 8 6.8 8 9c0 4 7 11 7 11s7-7 7-11c0-2.2-1.8-4-4-4z"/>
+                  </svg>
+                </div>
+                <div class="stat-label">Savings Rate</div>
+              </div>
+              <div class="stat-value">31%</div>
+              <div class="stat-sub">of PKR 4.2L monthly income</div>
+            </section>
+          </div>
+
+          <section class="fire-card" data-od-id="fire-card" aria-label="FIRE progress">
+            <div class="fire-head">
+              <div class="fire-title-row">
+                <div class="stat-icon icon-amber" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2c1 4-2 5-2 8a4 4 0 0 0 8 0c0-1-.5-2-1-2.5C17 9 18 10 18 12a6 6 0 0 1-12 0c0-5 5-6 6-10z"/>
+                  </svg>
+                </div>
+                <div class="fire-label">FIRE Progress</div>
+              </div>
+              <div class="fire-value">42%</div>
+            </div>
+            <div class="fire-bar-track" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100" aria-label="FIRE progress 42 percent">
+              <div class="fire-bar-fill"></div>
+            </div>
+            <div class="fire-caption">
+              <span><strong>PKR 28.47L</strong> so far</span>
+              <span>Goal <strong>PKR 67.8L</strong></span>
+            </div>
+          </section>
+
+          <div class="section-header">
+            <h2 class="section-title">PSX Holdings</h2>
+            <a class="see-all" href="#holdings">See all</a>
+          </div>
+
+          <section class="holdings-card" data-od-id="holdings" id="holdings" aria-label="PSX holdings">
+            <div class="holding-row">
+              <div class="holding-left">
+                <div class="ticker-chip" aria-hidden="true">HBL</div>
+                <div>
+                  <div class="holding-name">Habib Bank</div>
+                  <div class="holding-sector">Banking · KSE-100</div>
+                </div>
+              </div>
+              <div class="holding-right">
+                <div class="holding-price">162.40</div>
+                <div class="holding-change up">+1.8%</div>
+              </div>
+            </div>
+            <div class="holding-row">
+              <div class="holding-left">
+                <div class="ticker-chip" aria-hidden="true">OGDC</div>
+                <div>
+                  <div class="holding-name">Oil &amp; Gas Dev</div>
+                  <div class="holding-sector">Energy · KSE-100</div>
+                </div>
+              </div>
+              <div class="holding-right">
+                <div class="holding-price">148.25</div>
+                <div class="holding-change down">−0.6%</div>
+              </div>
+            </div>
+            <div class="holding-row">
+              <div class="holding-left">
+                <div class="ticker-chip" aria-hidden="true">LUCK</div>
+                <div>
+                  <div class="holding-name">Lucky Cement</div>
+                  <div class="holding-sector">Cement · KSE-100</div>
+                </div>
+              </div>
+              <div class="holding-right">
+                <div class="holding-price">1,084.50</div>
+                <div class="holding-change up">+2.4%</div>
+              </div>
+            </div>
+            <div class="holding-row">
+              <div class="holding-left">
+                <div class="ticker-chip" aria-hidden="true">HUBC</div>
+                <div>
+                  <div class="holding-name">Hub Power</div>
+                  <div class="holding-sector">Power · KSE-100</div>
+                </div>
+              </div>
+              <div class="holding-right">
+                <div class="holding-price">112.35</div>
+                <div class="holding-change up">+0.9%</div>
+              </div>
+            </div>
+            <div class="holding-row">
+              <div class="holding-left">
+                <div class="ticker-chip" aria-hidden="true">PPL</div>
+                <div>
+                  <div class="holding-name">Pakistan Petroleum</div>
+                  <div class="holding-sector">Energy · KSE-100</div>
+                </div>
+              </div>
+              <div class="holding-right">
+                <div class="holding-price">96.80</div>
+                <div class="holding-change up">+1.2%</div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <nav class="tabbar" data-od-id="tabbar" aria-label="Primary">
+          <button class="tab-btn active" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>
+            </svg>
+            Home
+          </button>
+          <button class="tab-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Portfolio
+          </button>
+          <button class="tab-btn tab-center" type="button" aria-label="Add transaction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button class="tab-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21.2 15.9A10 10 0 1 1 8 2.8"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>
+            </svg>
+            Insights
+          </button>
+          <button class="tab-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>
+            </svg>
+            Profile
+          </button>
+        </nav>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
