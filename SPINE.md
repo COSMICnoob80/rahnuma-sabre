@@ -90,4 +90,6 @@
 - **Not a SECP-registered advisor** — must not present as one
 - **Offline-first is the moat** — do not dilute to chase competitor features
 
+- [brief-ui] BriefingScreen + route + dashboard entry landed — tsc clean — commit "briefing screen: Panic Day Briefing UI per harvest pattern"
+
 - [brief-engine] briefing.ts + tests landed, 57 tests pass, tsc clean — 4daacd3

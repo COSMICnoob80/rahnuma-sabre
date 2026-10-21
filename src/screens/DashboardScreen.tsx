@@ -83,6 +83,13 @@ export default function DashboardScreen() {
     >
       <Text style={styles.date}>{now.toLocaleDateString('en-PK', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
 
+      <Button
+        label="Morning briefing"
+        onPress={() => navigation.navigate('Briefing')}
+        variant="secondary"
+        style={styles.briefingBtn}
+      />
+
       {/* Net Worth */}
       <Card>
         <Text style={typography.sectionTitle}>Net Worth</Text>
@@ -147,6 +154,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
   date: { color: colors.textMuted, fontSize: 14, marginBottom: spacing.lg, marginTop: spacing.sm },
+  briefingBtn: { alignSelf: 'flex-start', paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   progressBarBg: {
     backgroundColor: colors.border,

@@ -1,8 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import DashboardScreen from '../screens/DashboardScreen';
+import BriefingScreen from '../screens/BriefingScreen';
 import PortfolioScreen from '../screens/PortfolioScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
@@ -13,6 +15,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 /** Simple vector icon set — no emoji, no external icon library needed. */
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -68,28 +71,47 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   );
 }
 
+function TabsNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        headerStyle: { backgroundColor: colors.surfaceAlt },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: '700' },
+      })}
+    >
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Portfolio" component={PortfolioScreen} />
+      <Tab.Screen name="Budget" component={BudgetScreen} />
+      <Tab.Screen name="Calculators" component={CalculatorsScreen} />
+      <Tab.Screen name="Advisory" component={AdvisoryScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
+    </Tab.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.textMuted,
-          tabBarStyle: styles.tabBar,
-          tabBarLabelStyle: styles.tabLabel,
+      <Stack.Navigator
+        screenOptions={{
           headerStyle: { backgroundColor: colors.surfaceAlt },
           headerTintColor: colors.textPrimary,
           headerTitleStyle: { fontWeight: '700' },
-        })}
+        }}
       >
-        <Tab.Screen name="Dashboard" component={DashboardScreen} />
-        <Tab.Screen name="Portfolio" component={PortfolioScreen} />
-        <Tab.Screen name="Budget" component={BudgetScreen} />
-        <Tab.Screen name="Calculators" component={CalculatorsScreen} />
-        <Tab.Screen name="Advisory" component={AdvisoryScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-      </Tab.Navigator>
+        <Stack.Screen name="Tabs" component={TabsNavigator} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="Briefing"
+          component={BriefingScreen}
+          options={{ title: 'Morning briefing' }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
