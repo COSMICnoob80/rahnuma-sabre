@@ -103,3 +103,5 @@
 - HTML artifact: design/panic-briefing.html (OpenDesign run 489b76ff, self-contained).
 - Soldier models: all execution tiers on deepseek-v4.1-flash (verified in run logs).
 - NEXT: APK rebuild → install on phone → beta post to r/FIREPakistan.
+
+- [apk-forge] preview APK: FINISHED — /home/cosmicnoob/Downloads/rahnuma-sabre-preview.apk (66,959,054 bytes / 64M) + https://expo.dev/accounts/cosmicnoob80/projects/rahnuma-sabre/builds/6267aadf-7ce0-45f8-a11d-a79b20245b2f — buildId 6267aadf-7ce0-45f8-a11d-a79b20245b2f — no code fix, no commit
