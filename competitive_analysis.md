@@ -68,3 +68,32 @@ It deepens the moat instead of narrowing it.
 
 Rahnuma survives **if** it owns the gap. It dies if it clones. The product is good enough
 to launch a beta — the question is whether the *positioning* is sharp enough to be seen.
+
+## Addendum — ARN Financials (2026-10-22, from vSshlAJ2Kb4)
+
+**What they launched:** paid human advisory tier for PKR 20–45 lakh portfolios
+(quarterly review calls, recorded lectures, continuous bull-market-event guidance)
++ ARN Securities account-opening "within 10 days" + retirement content.
+149K-subscriber YouTube funnel.
+
+**Pole check:** opposite lane. Human-brain-vs-software, advice-vs-never-advice,
+paid-vs-zero, portfolio-revealed-vs-on-device. Structural check holds: his
+monetization requires telling people what to buy — he cannot become us without
+abandoning his revenue, same poison as AlphaGen/Finqalab, one more body.
+
+**What he named for us:** in his own words, small portfolios (1–10 lakh) have no
+professional option today — that is Rahnuma's beta segment, spoken on his channel.
+
+**What he validates:** continuous event guidance + personalized quarterly reviews
+are paid-for demand today; our briefing + grounded council deliver both instantly
+at zero marginal cost. That is the YC-grade pitch sentence, demonstrated.
+
+**The threat is distribution, not product:** trusted Urdu voice + 149K reach + a
+10-day capture countdown (ARN Securities launch) — a potential app would take
+mindshare our beta hasn't claimed yet. Driver: ship the phone test and the
+r/FIREPakistan post first, before his window closes.
+
+**Bonus:** Abdur Rehman Najam is already one of the nine council voices; his
+public videos are citable public record — the exact corpus our attributed
+"Context, not forecast" outlook layer draws from. Their content becomes our
+grounding layer at no software risk.
