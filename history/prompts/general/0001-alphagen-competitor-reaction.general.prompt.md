@@ -2,7 +2,7 @@
 id: 0001
 title: AlphaGen competitor reaction and positioning check
 stage: general
-date_iso: "2026-10-19"
+date_iso: "2026-10-22"
 surface: agent
 model: z-ai/glm-5.3-flash
 feature: none
