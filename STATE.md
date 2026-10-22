@@ -1,11 +1,13 @@
 # RAHNUMA SABRE — Project State
 
-**Last updated:** 2026-09-23
+**Last updated:** 2026-10-22
 **Repo:** https://github.com/COSMICnoob80/rahnuma-sabre
 **Branch:** master
 
 Read this first when picking the project back up. It is the single source of truth for
 "where was I".
+
+App = Brahma-apt: brief engine + briefing screen live; preview APK built from f37eaf4.
 
 ---
 
@@ -25,19 +27,32 @@ tells you to buy or sell.
 | Portfolio (add/delete holdings, sector allocation, price refresh, per-holding freshness) | Working |
 | Budget (income + expenses by category and month) | Working |
 | Calculators (CGT, SIP, asset ROI, PKR devaluation, FIRE) | Working, unit tested |
-| Advisory chat (6 personas, Auto routing, Council debate) | Working, needs a provider key |
+| Advisory chat (9 voices — 7 named investors + Pakistani Street + Rahnuma default; Auto routing, Council debate) | Working, needs a provider key |
+| Panic Day Briefing (quote + freshness, this month's investable amount from budget, fixed-purchase arithmetic, streak) | Working — facts only, no advisory output |
 | PIN lock (SecureStore-backed, throttled) | Working |
 | Data export (JSON) | Working |
+| Preview APK (EAS `preview` profile, build f37eaf4) | Built, not yet tested on a phone |
 | Backend / accounts / sync | Not built, and deliberately deferred |
 
 ## What does NOT work yet
 
 - No backend. All data is on-device in SQLite. There is no login, no sync, no multi-device.
+- **Bilingual UI chrome is not implemented.** The app chrome is English only: no Urdu
+  Nastaliq strings, no Roman Urdu strings, no i18n files, no RTL layout. Persona answers
+  already come back in Urdu or Roman Urdu when the user writes in one — that is the model,
+  not the UI.
+- **Global markets (international stocks, bonds, commodities, FX) are not built.** No live
+  non-PSX data, and no attributed narrative outlook. The share-harvest pattern for it is
+  specified but unbuilt. Worth noting: none of the local PSX competitors offer this in Urdu.
+- **README's Scenario Simulator is still unbuilt.** The calculators do single-variable
+  "what if" maths; there is no scenario simulator screen. README has been corrected to list
+  it as roadmap.
+- **On-device offline model is not built.** Gemma is specified in Principle XVI but absent;
+  without a provider key and without internet, advisory chat is inert.
 - Prices come from an undocumented Yahoo Finance endpoint for `.KAR` tickers. Indicative,
   end-of-day, and unlicensed. See `docs/DATA-SOURCES.md`.
-- On-device offline model (Gemma) is specified in Principle XVI but not implemented.
-- RAG / knowledge base, MCP servers, daily briefings (AGENTS.md Phase 2–3) are not built.
-- No Urdu localisation files yet — the persona prompts instruct the model to answer in Urdu.
+- RAG / knowledge base and MCP servers (AGENTS.md Phase 2–3) are not built.
+- No onboarding flow for first-time users.
 
 ---
 
@@ -45,12 +60,15 @@ tells you to buy or sell.
 
 ```bash
 npm start          # Expo dev server
-npm test           # 49 unit tests, no test dependencies (Node's built-in runner)
-npm run ts:check   # TypeScript, strict
+npm test           # 57 unit tests, no test dependencies (Node's built-in runner)
+npm run ts:check   # TypeScript, strict — clean
 ```
 
 To make the advisory chat answer, add at least one key in **Settings → AI Providers**.
 Gemini and Groq both have free tiers, so a beta costs nothing to serve.
+
+To build: `npx eas build --platform android --profile preview --non-interactive`, or locally
+`npx expo prebuild --platform android` then `./gradlew assembleRelease` in `android/`.
 
 ---
 
@@ -58,22 +76,27 @@ Gemini and Groq both have free tiers, so a beta costs nothing to serve.
 
 ```
 src/
-  screens/        Dashboard, Portfolio, Budget, Calculators, Advisory, Settings, PinLock
+  navigation/
+    AppNavigator.tsx  Native stack: Tabs + Briefing route ("Morning briefing")
+  screens/        Dashboard, Briefing, Portfolio, Budget, Calculators, Advisory, Settings, PinLock
   services/
     providers.ts      Provider catalogue (Gemini, Groq, OpenRouter) + models
     llmAdapters.ts    Pure request/response shaping (unit tested)
     llmService.ts     Provider fallback chain + response cache
-    personaService.ts Personas, deterministic router, buy/sell guard
+    personaService.ts 9 personas, deterministic router, council debate, buy/sell guard
     priceFreshness.ts Quote staleness labelling (pure, unit tested)
     psxService.ts     Price fetch with fallback host
     dataService.ts    JSON export
   database/db.ts  SQLite schema + queries
+  theme/          Colors, 4pt spacing scale, typography scale
+  components/     Card, Button, Input, Chip, EmptyState, LoadingState
   utils/
     calculators.ts  All financial math (unit tested)
+    briefing.ts     Panic Day Briefing math — pure, no advisory fields (unit tested)
     secureStorage.ts API keys per provider (SecureStore)
     pinLock.ts      PIN storage + attempt throttling
-tests/            Node built-in test runner
-docs/             TAX-RULES, SECP-POSTURE, DATA-SOURCES, BETA-LAUNCH-POST
+tests/            Node built-in test runner (briefing, calculators, persona, psxService)
+docs/             WHY (charter), TAX-RULES, SECP-POSTURE, DATA-SOURCES, API-LANDSCAPE, BETA-LAUNCH-POST
 ```
 
 ---
@@ -118,8 +141,12 @@ See `docs/BETA-LAUNCH-POST.md` for how the first cohort is recruited.
 
 ## Next steps, in order
 
-1. Add `docs/TAX-RULES.md` items into the UI as a visible "assumptions" line on the CGT card.
-2. Ship a closed beta to r/FIREPakistan and log retention + query frequency.
-3. Replace Yahoo with a licensed EOD data source once there is any funding.
-4. Implement Urdu UI strings (the model already answers in Urdu; the chrome is English).
-5. Only then: backend for accounts/sync, if retention data justifies it.
+1. **Phone test** the preview APK (f37eaf4): briefing screen, advisory chat with a free key,
+   PIN lock, export.
+2. **Closed beta to r/FIREPakistan** — log retention and query frequency.
+3. **Bilingual chrome pass** — English + Urdu Nastaliq + Roman Urdu strings, RTL layout.
+4. **Persona narration on the briefing** — let a persona explain the already-computed facts
+   in the user's language, still with zero directional claims.
+5. **Global outlook harvest build** — international stocks, bonds, commodities, FX with
+   attributed narrative outlook, in Urdu.
+6. Only then: backend for accounts/sync, if retention data justifies it.
