@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rahnuma Sabre — Global Outlook Morning Briefing</title>
+<style>
+  :root{
+    --bg:            oklch(0.135 0.012 250);
+    --surface:       oklch(0.185 0.014 250);
+    --surface-2:     oklch(0.228 0.017 250);
+    --fg:            oklch(0.94 0.008 250);
+    --muted:         oklch(0.64 0.020 250);
+    --border:        oklch(0.27 0.016 250);
+    --accent:        oklch(0.80 0.160 162);
+    --danger:        oklch(0.72 0.190 22);
+    --danger-ink:    oklch(0.95 0.020 30);
+    --danger-surface:oklch(0.205 0.045 22);
+    --danger-border: oklch(0.40 0.100 22);
+    --chip-sunk:     oklch(0.165 0.014 250);
+    --fresh-bg:      oklch(0.16 0.012 250);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+    --urdu: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", "Segoe UI", system-ui, sans-serif;
+    --r-card: 20px;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin: 0; }
+  body{
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 28px 16px;
+    background: oklch(0.095 0.012 250);
+    font-family: var(--sans);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- iPhone-style frame ---------- */
+  .phone{
+    width: 375px;
+    height: 820px;
+    padding: 12px;
+    background: oklch(0.06 0.008 250);
+    border: 1px solid oklch(0.30 0.020 250);
+    border-radius: 54px;
+    box-shadow: 0 34px 80px -32px oklch(0.02 0.010 250);
+  }
+  .screen{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border-radius: 42px;
+    overflow: hidden;
+  }
+  .island{
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 104px; height: 28px;
+    border-radius: 999px;
+    background: oklch(0.05 0.005 250);
+    z-index: 6;
+    pointer-events: none;
+  }
+  .home{
+    position: absolute;
+    bottom: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 4px;
+    border-radius: 999px;
+    background: oklch(0.60 0.020 250);
+    opacity: .45;
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  /* ---------- scrollable content ---------- */
+  .stack{
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 56px 14px 14px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .stack::-webkit-scrollbar{ display: none; }
+
+  /* ---------- header ---------- */
+  .hero{ padding: 2px 2px 0; }
+  .hero-top{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .brand{
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .clock{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .greeting{
+    margin: 12px 0 0;
+    font-size: 25px;
+    line-height: 1.32;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  .greet-ur{
+    font-family: var(--urdu);
+    font-weight: 600;
+    font-size: 1.08em;
+    letter-spacing: 0;
+  }
+  .greet-sep{
+    color: var(--muted);
+    font-weight: 400;
+    margin: 0 8px;
+  }
+  .hero-sub{
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* ---------- cards ---------- */
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 15px 15px 16px;
+  }
+  .card-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 12px;
+  }
+  .card h2{
+    margin: 0 0 13px;
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    color: var(--fg);
+  }
+  .card-head h2{ margin: 0; }
+  .h2-ur{
+    font-family: var(--urdu);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .h-sep{ color: var(--muted); font-weight: 400; margin: 0 6px; }
+
+  /* ---------- freshness chips ---------- */
+  .fresh-chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--fresh-bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+    flex: none;
+  }
+  .fresh-chip .dot{
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+
+  /* ---------- scrollable chip row (National) ---------- */
+  .chip-row{
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 2px 12px;
+    margin: 0 -2px 2px;
+    border-radius: 8px;
+  }
+  .chip-row::-webkit-scrollbar{ display: none; }
+  .kpi-chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    flex: none;
+    padding: 9px 13px;
+    border-radius: 999px;
+    background: var(--danger-surface);
+    border: 1px solid var(--danger-border);
+  }
+  .kpi-name{
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--danger-ink);
+    opacity: .85;
+    white-space: nowrap;
+  }
+  .kpi-val{
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .kpi-chip .fresh-chip{
+    background: oklch(0.17 0.030 22);
+    border-color: oklch(0.34 0.070 22);
+    color: oklch(0.80 0.030 30);
+  }
+
+  /* ---------- value rows ---------- */
+  .fx-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 0;
+  }
+  .fx-row + .fx-row{ border-top: 1px solid var(--border); }
+  .fx-label{
+    font-size: 11.5px;
+    color: var(--muted);
+    flex: none;
+    white-space: nowrap;
+  }
+  .fx-right{
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+  .fx-value{
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .delta{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .delta.up{ color: var(--accent); }
+  .delta.down{ color: var(--danger); }
+  .delta.flat{ color: var(--muted); font-weight: 600; }
+
+  .caption{
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .caption strong{
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  /* ---------- council quotes ---------- */
+  .quote{
+    position: relative;
+    margin: 0 0 10px;
+    padding: 13px 13px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .qmark{
+    position: absolute;
+    top: 4px; left: 11px;
+    font-size: 30px;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--accent);
+    opacity: .38;
+    pointer-events: none;
+  }
+  .quote blockquote{
+    margin: 12px 0 0;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+  .quote figcaption{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .avatar{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--chip-sunk);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--fg);
+    flex: none;
+  }
+  .qname{
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--muted);
+  }
+  .qname .org{ font-weight: 500; opacity: .9; }
+
+  /* ---------- horizon chips ---------- */
+  .horizon{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid var(--border);
+  }
+  .hchip{
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--chip-sunk);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .hchip.active{
+    background: oklch(0.205 0.050 162);
+    border-color: oklch(0.42 0.110 162);
+    color: var(--accent);
+  }
+
+  /* ---------- footer note card ---------- */
+  .footnote p{
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  /* ---------- pinned contract bar ---------- */
+  .contract{
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px 30px;
+    background: oklch(0.155 0.013 250);
+    border-top: 1px solid var(--border);
+  }
+  .contract p{
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .btn-secondary{
+    appearance: none;
+    width: 100%;
+    min-height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .12s ease, border-color .12s ease;
+  }
+  .btn-secondary:hover{
+    background: oklch(0.265 0.018 250);
+    border-color: oklch(0.34 0.020 250);
+  }
+  .btn-secondary:active{
+    background: oklch(0.305 0.022 250);
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-secondary:focus-visible{
+    outline-offset: 3px;
+    border-radius: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn-secondary{ transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="phone" data-od-id="outlook-briefing-phone">
+    <div class="screen">
+      <div class="island" aria-hidden="true"></div>
+
+      <main class="stack">
+        <header class="hero" data-od-id="outlook-briefing-header"
+                aria-label="Global Outlook morning briefing. Rozana nazar-thani. Dated Monday 19 October 2026, 9:15 PM Pakistan time.">
+          <div class="hero-top">
+            <span class="brand">Rahnuma Sabre</span>
+            <span class="clock" data-od-id="outlook-date" aria-label="Mon 19 Oct 2026, 09:15 PKT">Mon 19 Oct 2026 · 09:15 PKT</span>
+          </div>
+          <h1 class="greeting" data-od-id="outlook-heading">
+            <span class="greet-en">Global Outlook</span><span class="greet-sep" aria-hidden="true">·</span><span class="greet-ur" lang="ur" dir="rtl">روزانہ نظرثانی</span>
+          </h1>
+          <p class="hero-sub">Global nazaar-e-sara · aaj ka subah ka munzar</p>
+        </header>
+
+        <section class="card" data-od-id="outlook-national-card"
+                 aria-label="National. KSE-100 index 118,420, down 3.2 percent, live. PKR to US dollar 281.35, up 0.1 percent, 6 minutes old. 6 month treasury bill yield 11.8 percent, unchanged, end of day.">
+          <div class="card-head">
+            <h2 data-od-id="outlook-national-heading">National</h2>
+          </div>
+
+          <div class="chip-row" tabindex="0" role="group" data-od-id="outlook-kse-chip-row"
+               aria-label="KSE-100, 118,420, down 3.2 percent, live. Scroll horizontally for more.">
+            <span class="kpi-chip" data-od-id="outlook-kse-chip">
+              <span class="kpi-name">KSE-100</span>
+              <span class="kpi-val">118,420</span>
+              <span class="delta down">-3.2%</span>
+              <span class="fresh-chip"><span class="dot" aria-hidden="true"></span>live</span>
+            </span>
+          </div>
+
+          <div class="fx-row">
+            <span class="fx-label">PKR/USD</span>
+            <span class="fx-right">
+              <span class="fx-value">281.35</span>
+              <span class="delta up">+0.1%</span>
+              <span class="fresh-chip">6 min old</span>
+            </span>
+          </div>
+          <div class="fx-row">
+            <span class="fx-label">6M T-bill</span>
+            <span class="fx-right">
+              <span class="fx-value">11.8%</span>
+              <span class="delta flat">unchanged</span>
+              <span class="fresh-chip">EOD</span>
+            </span>
+          </div>
+        </section>
+
+        <section class="card" data-od-id="outlook-international-card"
+                 aria-label="International. S and P 500 at 5,912, up 0.8 percent. NASDAQ at 19,077, up 1.1 percent. Gold XAU at 2,712 US dollars, up 0.4 percent. Brent crude at 73 dollars 40 cents, down 0.9 percent. Overnight moves.">
+          <div class="card-head">
+            <h2 data-od-id="outlook-international-heading">International</h2>
+            <span class="fresh-chip">overnight</span>
+          </div>
+
+          <div class="fx-row">
+            <span class="fx-label">S&amp;P 500</span>
+            <span class="fx-right">
+              <span class="fx-value">5,912</span>
+              <span class="delta up">+0.8%</span>
+            </span>
+          </div>
+          <div class="fx-row">
+            <span class="fx-label">NASDAQ</span>
+            <span class="fx-right">
+              <span class="fx-value">19,077</span>
+              <span class="delta up">+1.1%</span>
+            </span>
+          </div>
+          <div class="fx-row">
+            <span class="fx-label">Gold XAU</span>
+            <span class="fx-right">
+              <span class="fx-value">$2,712</span>
+              <span class="delta up">+0.4%</span>
+            </span>
+          </div>
+          <div class="fx-row">
+            <span class="fx-label">Brent</span>
+            <span class="fx-right">
+              <span class="fx-value">$73.40</span>
+              <span class="delta down">-0.9%</span>
+            </span>
+          </div>
+
+          <p class="caption" data-od-id="outlook-overnight-caption"><strong>Kya giya kal raat?</strong> What moved overnight?</p>
+        </section>
+
+        <section class="card" data-od-id="outlook-council-card"
+                 aria-label="What the council notes. Warren: Commodity swings are weather, not climate. Watch your own plan. Arif Habib of PSX: Liquidity was thin at the open. Horizon tags: context not forecast, short active, medium and long inactive. Facts only, no targets, no advice.">
+          <h2 data-od-id="outlook-council-heading">What the council notes<span class="h-sep" aria-hidden="true">·</span><span class="h2-ur" lang="ur" dir="rtl">شورہ کونسل</span></h2>
+
+          <figure class="quote" data-od-id="outlook-quote-warren">
+            <span class="qmark" aria-hidden="true">&ldquo;</span>
+            <blockquote>Commodity swings are weather, not climate. Watch your own plan.</blockquote>
+            <figcaption>
+              <span class="avatar" aria-hidden="true">W</span>
+              <span class="qname">Warren</span>
+            </figcaption>
+          </figure>
+
+          <figure class="quote" data-od-id="outlook-quote-arif-habib">
+            <span class="qmark" aria-hidden="true">&ldquo;</span>
+            <blockquote>Liquidity was thin at the open.</blockquote>
+            <figcaption>
+              <span class="avatar" aria-hidden="true">AH</span>
+              <span class="qname">Arif Habib <span class="org">(PSX)</span></span>
+            </figcaption>
+          </figure>
+
+          <div class="horizon" role="group" data-od-id="outlook-horizon-chips"
+               aria-label="Horizon tags: context not forecast; short, active; medium, inactive; long, inactive.">
+            <span class="hchip">Context, not forecast</span>
+            <span class="hchip active" data-od-id="outlook-horizon-short">Short</span>
+            <span class="hchip" data-od-id="outlook-horizon-medium">Medium</span>
+            <span class="hchip" data-od-id="outlook-horizon-long">Long</span>
+          </div>
+        </section>
+
+        <section class="card footnote" data-od-id="outlook-footnote-card"
+                 aria-label="Data from public feeds. Freshness labeled. Urdu and English. Never tells you to buy or sell.">
+          <p>Data: public feeds · Freshness labeled · Urdu + English · Never tells you to buy or sell.</p>
+        </section>
+      </main>
+
+      <footer class="contract" data-od-id="outlook-contract-bar"
+              aria-label="Information only. Not investment advice. Rahnuma will never tell you to buy or sell.">
+        <p>Information only · Not investment advice · Rahnuma will never tell you to buy or sell</p>
+        <button class="btn-secondary" type="button" data-od-id="outlook-close-button">Close briefing</button>
+      </footer>
+
+      <div class="home" aria-hidden="true"></div>
+    </div>
+  </div>
+</body>
+</html>
