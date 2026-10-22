@@ -22,7 +22,8 @@
         "backgroundColor": "#0a1628"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.rahnuma.sabre"
+      "package": "com.rahnuma.sabre",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"

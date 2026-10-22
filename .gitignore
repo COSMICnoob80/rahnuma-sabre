@@ -13,6 +13,7 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
@@ -38,7 +39,13 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+
+# android: commit gradle sources, never build outputs or signing secrets
+# (build/, .gradle/, local.properties, .cxx/ are covered by android/.gitignore)
+android/keystore.properties
+android/app/src/main/assets/*.bundle
+android/.kotlin/
+android/captures/
 
 # Obsidian
 .obsidian/
