@@ -1,17 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getSetting, setSetting } from '../database/db';
-import { formatPKR } from '../utils/calculators';
 import { PROVIDERS, ProviderId } from '../services/providers';
 import {
   getProviderKey, setProviderKey, getProviderModel, setProviderModel,
 } from '../utils/secureStorage';
 import { hasPin, setPin, removePin } from '../utils/pinLock';
 import { exportAllData } from '../services/dataService';
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { Card, Button, Input, Chip } from '../components';
 
 type KeysState = Record<string, { input: string; saved: boolean }>;
 type ModelsState = Record<string, string>;
@@ -90,14 +89,18 @@ export default function SettingsScreen() {
   };
 
   const saveButton = (label: string, onPress: () => void, danger = false) => (
-    <TouchableOpacity style={[styles.saveBtn, danger && styles.dangerBtn]} onPress={onPress}>
-      <Text style={styles.saveBtnText}>{label}</Text>
-    </TouchableOpacity>
+    <Button
+      label={label}
+      onPress={onPress}
+      variant={danger ? 'danger' : 'secondary'}
+      size="sm"
+      style={styles.rowButton}
+    />
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Card compact>
         <Text style={styles.sectionTitle}>AI Providers</Text>
         <Text style={styles.hint}>
           Add at least one key. The advisor tries them in order and falls back automatically, so a free-tier key is enough to run at zero cost.
@@ -110,148 +113,139 @@ export default function SettingsScreen() {
               {provider.signupNote} — {keys[provider.id]?.saved ? 'key saved securely' : 'no key set'}
             </Text>
             <View style={styles.row}>
-              <TextInput
-                style={[styles.input, { flex: 1, marginRight: 8 }]}
-                placeholder="Paste API key"
-                placeholderTextColor="#64748b"
-                value={keys[provider.id]?.input ?? ''}
-                onChangeText={(text) =>
-                  setKeys((prev) => ({
-                    ...prev,
-                    [provider.id]: { input: text, saved: prev[provider.id]?.saved ?? false },
-                  }))
-                }
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.rowField}>
+                <Input
+                  style={styles.rowInput}
+                  placeholder="Paste API key"
+                  value={keys[provider.id]?.input ?? ''}
+                  onChangeText={(text) =>
+                    setKeys((prev) => ({
+                      ...prev,
+                      [provider.id]: { input: text, saved: prev[provider.id]?.saved ?? false },
+                    }))
+                  }
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
               {saveButton('Save', () => handleSaveKey(provider.id))}
             </View>
             {keys[provider.id]?.saved && saveButton('Remove Key', () => handleClearKey(provider.id), true)}
 
-            {provider.models.map((m) => (
-              <TouchableOpacity
-                key={m.value}
-                style={[styles.modelOption, models[provider.id] === m.value && styles.modelOptionActive]}
-                onPress={() => handleSelectModel(provider.id, m.value)}
-              >
-                <Text
-                  style={[
-                    styles.modelOptionText,
-                    models[provider.id] === m.value && styles.modelOptionTextActive,
-                  ]}
-                >
-                  {m.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <View style={styles.modelRow}>
+              {provider.models.map((m) => (
+                <Chip
+                  key={m.value}
+                  label={m.label}
+                  selected={models[provider.id] === m.value}
+                  onPress={() => handleSelectModel(provider.id, m.value)}
+                  style={styles.modelChip}
+                />
+              ))}
+            </View>
           </View>
         ))}
-      </View>
+      </Card>
 
-      <View style={styles.section}>
+      <Card compact>
         <Text style={styles.sectionTitle}>Financial Settings</Text>
 
         <Text style={styles.label}>Cash Balance (PKR)</Text>
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="0"
-            placeholderTextColor="#64748b"
-            value={cashAmount}
-            onChangeText={setCashAmount}
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="0"
+              value={cashAmount}
+              onChangeText={setCashAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
           {saveButton('Save', () => saveSetting('cash', cashAmount, 'Cash'))}
         </View>
 
         <Text style={styles.label}>Property Value (PKR)</Text>
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="0"
-            placeholderTextColor="#64748b"
-            value={propertyAmount}
-            onChangeText={setPropertyAmount}
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="0"
+              value={propertyAmount}
+              onChangeText={setPropertyAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
           {saveButton('Save', () => saveSetting('property', propertyAmount, 'Property'))}
         </View>
 
         <Text style={styles.label}>FIRE Target (PKR)</Text>
         <Text style={styles.hint}>Leave empty to auto-calculate (monthly expenses × 300 at a 4% withdrawal rate)</Text>
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="Auto-calculated"
-            placeholderTextColor="#64748b"
-            value={fireTargetAmount}
-            onChangeText={setFireTargetAmount}
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="Auto-calculated"
+              value={fireTargetAmount}
+              onChangeText={setFireTargetAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
           {saveButton('Save', () => saveSetting('fire_target', fireTargetAmount, 'FIRE Target'))}
         </View>
 
         <Text style={styles.label}>Monthly Budget (PKR)</Text>
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="Set monthly budget"
-            placeholderTextColor="#64748b"
-            value={budgetAmount}
-            onChangeText={setBudgetAmount}
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="Set monthly budget"
+              value={budgetAmount}
+              onChangeText={setBudgetAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
           {saveButton('Save', () => saveSetting('monthly_budget', budgetAmount, 'Budget'))}
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.section}>
+      <Card compact>
         <Text style={styles.sectionTitle}>App Lock</Text>
         {pinExists ? (
           <>
             <Text style={styles.hint}>PIN lock is active. Five wrong attempts trigger a 30-second lockout.</Text>
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="New 4-digit PIN"
-              placeholderTextColor="#64748b"
               value={pin}
               onChangeText={setPinVal}
               keyboardType="number-pad"
               secureTextEntry
               maxLength={4}
             />
-            <View style={{ height: 8 }} />
-            {saveButton('Change PIN', handlePinSetup)}
-            <View style={{ height: 8 }} />
-            {saveButton('Remove PIN', handleRemovePin, true)}
+            <Button label="Change PIN" onPress={handlePinSetup} variant="secondary" style={styles.stackButton} />
+            <Button label="Remove PIN" onPress={handleRemovePin} variant="danger" style={styles.stackButton} />
           </>
         ) : (
           <>
             <Text style={styles.hint}>Set a 4-digit PIN to lock the app</Text>
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="Set 4-digit PIN"
-              placeholderTextColor="#64748b"
               value={pin}
               onChangeText={setPinVal}
               keyboardType="number-pad"
               secureTextEntry
               maxLength={4}
             />
-            <View style={{ height: 8 }} />
-            {saveButton('Set PIN', handlePinSetup)}
+            <Button label="Set PIN" onPress={handlePinSetup} style={styles.stackButton} />
           </>
         )}
-      </View>
+      </Card>
 
-      <View style={styles.section}>
+      <Card compact>
         <Text style={styles.sectionTitle}>Data</Text>
-        <TouchableOpacity style={styles.saveBtn} onPress={exportAllData}>
-          <Text style={styles.saveBtnText}>Export All Data (JSON)</Text>
-        </TouchableOpacity>
-      </View>
+        <Button label="Export All Data (JSON)" onPress={exportAllData} variant="secondary" />
+      </Card>
 
-      <View style={styles.section}>
+      <Card compact>
         <Text style={styles.sectionTitle}>About</Text>
         <Text style={styles.aboutText}>Rahnuma SABRE v1.0.0</Text>
         <Text style={styles.aboutText}>Package: com.rahnuma.sabre</Text>
@@ -259,27 +253,54 @@ export default function SettingsScreen() {
         <Text style={styles.disclaimer}>
           Information only, not investment advice. Consult a SECP-registered advisor for decisions.
         </Text>
-      </View>
+      </Card>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628', padding: 16 },
-  section: { backgroundColor: '#1e293b', borderRadius: 16, padding: 20, marginBottom: 12 },
-  sectionTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
-  providerBlock: { borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 12, marginTop: 12 },
-  label: { color: '#cbd5e1', fontSize: 14, marginBottom: 4, marginTop: 4 },
-  hint: { color: '#64748b', fontSize: 12, marginBottom: 8, lineHeight: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  input: { backgroundColor: '#334155', color: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 15 },
-  saveBtn: { backgroundColor: '#3b82f6', padding: 12, borderRadius: 10, alignItems: 'center' },
-  dangerBtn: { backgroundColor: '#ef4444', marginTop: 8 },
-  saveBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  modelOption: { backgroundColor: '#334155', padding: 12, borderRadius: 10, marginBottom: 6 },
-  modelOptionActive: { backgroundColor: '#3b82f6' },
-  modelOptionText: { color: '#94a3b8', fontSize: 14 },
-  modelOptionTextActive: { color: '#fff', fontWeight: '600' },
-  aboutText: { color: '#94a3b8', fontSize: 13, marginBottom: 4 },
-  disclaimer: { color: '#475569', fontSize: 11, marginTop: 12, textAlign: 'center', fontStyle: 'italic' },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl + spacing.sm },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+    marginBottom: spacing.md,
+  },
+  providerBlock: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    marginTop: spacing.md,
+  },
+  label: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  hint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginBottom: spacing.sm,
+    lineHeight: 16,
+  },
+  row: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: spacing.sm },
+  rowField: { flex: 1, marginRight: spacing.sm },
+  rowInput: { marginBottom: 0 },
+  rowButton: { marginBottom: 0 },
+  modelRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  modelChip: { marginBottom: spacing.sm },
+  stackButton: { marginTop: spacing.sm },
+  aboutText: { color: colors.textSecondary, fontSize: 13, marginBottom: spacing.xs },
+  disclaimer: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
 });

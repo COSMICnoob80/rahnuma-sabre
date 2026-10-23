@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import DashboardScreen from '../screens/DashboardScreen';
 import BriefingScreen from '../screens/BriefingScreen';
@@ -10,12 +11,14 @@ import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
 import AdvisoryScreen from '../screens/AdvisoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+const TAB_BAR_CONTENT_HEIGHT = 60;
 
 /** Simple vector icon set — no emoji, no external icon library needed. */
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -72,17 +75,26 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 }
 
 function TabsNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
+            paddingBottom: insets.bottom + spacing.xs,
+          },
+        ],
         tabBarLabelStyle: styles.tabLabel,
         headerStyle: { backgroundColor: colors.surfaceAlt },
         headerTintColor: colors.textPrimary,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '600' },
+        headerShadowVisible: false,
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -97,32 +109,36 @@ function TabsNavigator() {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.surfaceAlt },
-          headerTintColor: colors.textPrimary,
-          headerTitleStyle: { fontWeight: '700' },
-        }}
-      >
-        <Stack.Screen name="Tabs" component={TabsNavigator} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="Briefing"
-          component={BriefingScreen}
-          options={{ title: 'Morning briefing' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.surfaceAlt },
+            headerTintColor: colors.textPrimary,
+            headerTitleStyle: { fontWeight: '600' },
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="Tabs" component={TabsNavigator} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="Briefing"
+            component={BriefingScreen}
+            options={{ title: 'Morning briefing' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: colors.surfaceAlt,
-    borderTopColor: colors.surface,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
-    paddingTop: spacing.xs,
-    height: 60,
+    paddingTop: spacing.sm,
   },
   tabLabel: { fontSize: 10, fontWeight: '600', marginBottom: 4 },
   tabIcon: { alignItems: 'center', justifyContent: 'center' },

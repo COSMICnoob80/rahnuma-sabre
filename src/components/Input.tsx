@@ -2,43 +2,63 @@
  * Shared Input component — styled TextInput with consistent theme.
  */
 
-import React from 'react';
-import { TextInput, StyleSheet, TextInputProps } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, StyleProp, TextStyle, TextInputProps } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 
 interface InputProps extends TextInputProps {
   label?: string;
+  style?: StyleProp<TextStyle>;
 }
 
-export function Input({ label, style, ...props }: InputProps) {
+export function Input({ label, style, onFocus, onBlur, ...props }: InputProps) {
+  const [focused, setFocused] = useState(false);
+
   return (
-    <>
-      {label && <label style={styles.label}>{label}</label>}
+    <View style={styles.wrapper}>
+      {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
-        style={[styles.input, style]}
+        style={[styles.input, focused && styles.inputFocused, style]}
         placeholderTextColor={colors.textMuted}
+        selectionColor={colors.accent}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         {...props}
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    width: '100%',
+  },
   label: {
     color: colors.textSecondary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
     color: colors.textPrimary,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
     fontSize: 15,
+  },
+  inputFocused: {
+    borderColor: colors.accent,
   },
 });

@@ -3,26 +3,36 @@
  */
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  style?: ViewStyle;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  style?: StyleProp<ViewStyle>;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'md' | 'sm';
   disabled?: boolean;
 }
 
-export function Button({ label, onPress, style, variant = 'primary', disabled }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  style,
+  variant = 'primary',
+  size = 'md',
+  disabled,
+}: ButtonProps) {
   return (
     <TouchableOpacity
       style={[
         styles.base,
+        size === 'sm' && styles.small,
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
         variant === 'ghost' && styles.ghost,
+        variant === 'danger' && styles.danger,
         disabled && styles.disabled,
         style,
       ]}
@@ -33,9 +43,11 @@ export function Button({ label, onPress, style, variant = 'primary', disabled }:
       <Text
         style={[
           styles.label,
+          size === 'sm' && styles.labelSmall,
           variant === 'primary' && styles.labelPrimary,
           variant === 'secondary' && styles.labelSecondary,
           variant === 'ghost' && styles.labelGhost,
+          variant === 'danger' && styles.labelDanger,
         ]}
       >
         {label}
@@ -48,20 +60,30 @@ const styles = StyleSheet.create({
   base: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  small: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
   },
   primary: {
     backgroundColor: colors.accent,
   },
   secondary: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: colors.border,
   },
   ghost: {
     backgroundColor: 'transparent',
+  },
+  danger: {
+    backgroundColor: colors.dangerSurface,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
   },
   disabled: {
     opacity: 0.5,
@@ -69,6 +91,9 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  labelSmall: {
+    fontSize: 13,
   },
   labelPrimary: {
     color: colors.onAccent,
@@ -78,5 +103,8 @@ const styles = StyleSheet.create({
   },
   labelGhost: {
     color: colors.accent,
+  },
+  labelDanger: {
+    color: colors.dangerInk,
   },
 });

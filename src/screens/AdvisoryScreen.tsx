@@ -15,6 +15,9 @@ import {
   routePersona,
   COUNCIL_DEBATE_PERSONAS,
 } from '../services/personaService';
+import { colors } from '../theme/colors';
+import { spacing, radius } from '../theme/spacing';
+import { Chip } from '../components';
 
 const GREETING =
   "Assalam-o-Alaikum! I'm Rahnuma, your financial advisor. Ask me about your portfolio, FIRE planning, taxes, or any financial question.";
@@ -172,35 +175,26 @@ export default function AdvisoryScreen() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.controls}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <TouchableOpacity
-            style={[styles.chip, selectedPersona === 'auto' && !councilMode && styles.chipActive]}
+          <Chip
+            label="Auto"
+            selected={selectedPersona === 'auto' && !councilMode}
             onPress={() => { setSelectedPersona('auto'); setCouncilMode(false); }}
-          >
-            <Text style={[styles.chipText, selectedPersona === 'auto' && !councilMode && styles.chipTextActive]}>
-              ✨ Auto
-            </Text>
-          </TouchableOpacity>
+          />
 
           {PERSONAS.filter((p) => p.id !== 'rahnuma_default').map((persona) => (
-            <TouchableOpacity
+            <Chip
               key={persona.id}
-              style={[styles.chip, selectedPersona === persona.id && !councilMode && styles.chipActive]}
+              label={personaChipLabel(persona.id)}
+              selected={selectedPersona === persona.id && !councilMode}
               onPress={() => { setSelectedPersona(persona.id); setCouncilMode(false); }}
-            >
-              <Text
-                style={[styles.chipText, selectedPersona === persona.id && !councilMode && styles.chipTextActive]}
-              >
-                {personaChipLabel(persona.id)}
-              </Text>
-            </TouchableOpacity>
+            />
           ))}
 
-          <TouchableOpacity
-            style={[styles.chip, councilMode && styles.councilChipActive]}
+          <Chip
+            label="Council debate"
+            selected={councilMode}
             onPress={() => setCouncilMode(true)}
-          >
-            <Text style={[styles.chipText, councilMode && styles.chipTextActive]}>⚖️ Council debate</Text>
-          </TouchableOpacity>
+          />
         </ScrollView>
 
         <Text style={styles.controlsHint}>
@@ -242,17 +236,20 @@ export default function AdvisoryScreen() {
       )}
 
       <View style={styles.inputBar}>
-        <TextInput
-          style={styles.chatInput}
-          placeholder="Ask about your finances..."
-          placeholderTextColor="#64748b"
-          value={input}
-          onChangeText={setInput}
-          multiline
-        />
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={loading}>
-          <Text style={styles.sendBtnText}>{loading ? '...' : 'Send'}</Text>
-        </TouchableOpacity>
+        <View style={styles.inputShell}>
+          <TextInput
+            style={styles.chatInput}
+            placeholder="Ask about your finances..."
+            placeholderTextColor={colors.textMuted}
+            selectionColor={colors.accent}
+            value={input}
+            onChangeText={setInput}
+            multiline
+          />
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={loading}>
+            <Text style={styles.sendBtnText}>{loading ? '...' : 'Send'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Text style={styles.disclaimer}>
@@ -263,68 +260,122 @@ export default function AdvisoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628' },
-  centered: { alignItems: 'center', justifyContent: 'center', padding: 32 },
-  controls: { borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingTop: 8 },
-  chipRow: { paddingHorizontal: 12, paddingVertical: 6 },
-  chip: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
+  container: { flex: 1, backgroundColor: colors.background },
+  centered: { alignItems: 'center', justifyContent: 'center', padding: spacing.xxl + spacing.sm },
+  controls: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
   },
-  chipActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
-  councilChipActive: { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' },
-  chipText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  controlsHint: { color: '#64748b', fontSize: 11, paddingHorizontal: 14, paddingBottom: 8, lineHeight: 15 },
-  chatList: { flex: 1, paddingHorizontal: 16 },
-  chatContent: { paddingVertical: 12 },
-  messageBlock: { marginBottom: 10 },
-  personaBadge: { color: '#64748b', fontSize: 11, marginBottom: 3, marginLeft: 4 },
-  bubble: { maxWidth: '85%', padding: 12, borderRadius: 16 },
-  userBubble: { backgroundColor: '#3b82f6', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  assistantBubble: { backgroundColor: '#1e293b', alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
-  bubbleText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22 },
-  userBubbleText: { color: '#fff' },
-  messageNote: { color: '#475569', fontSize: 11, marginTop: 3, marginLeft: 4 },
-  typing: { paddingHorizontal: 16, marginBottom: 4 },
-  typingText: { color: '#64748b', fontSize: 13, fontStyle: 'italic' },
+  chipRow: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    alignItems: 'center',
+  },
+  controlsHint: {
+    color: colors.textMuted,
+    fontSize: 11,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    lineHeight: 15,
+  },
+  chatList: { flex: 1, paddingHorizontal: spacing.lg },
+  chatContent: { paddingVertical: spacing.md, paddingBottom: spacing.sm },
+  messageBlock: { marginBottom: spacing.md },
+  personaBadge: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+    marginLeft: 2,
+  },
+  bubble: {
+    maxWidth: '85%',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+  },
+  userBubble: {
+    backgroundColor: colors.accentTint,
+    borderColor: colors.accentBorder,
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 6,
+  },
+  assistantBubble: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 6,
+  },
+  bubbleText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+  userBubbleText: { color: colors.textPrimary },
+  messageNote: {
+    color: colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  typing: { paddingHorizontal: spacing.lg, marginBottom: spacing.xs },
+  typingText: { color: colors.textSecondary, fontSize: 12, fontStyle: 'italic' },
   inputBar: {
-    flexDirection: 'row',
-    padding: 12,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  inputShell: {
+    flexDirection: 'row',
     alignItems: 'flex-end',
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   chatInput: {
     flex: 1,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 12,
-    color: '#e2e8f0',
+    color: colors.textPrimary,
     fontSize: 15,
     maxHeight: 100,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   sendBtn: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginLeft: 8,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    marginLeft: spacing.sm,
   },
-  sendBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  sendBtnText: { color: colors.onAccent, fontWeight: '700', fontSize: 14 },
   disclaimer: {
-    color: '#475569',
-    fontSize: 11,
+    color: colors.textMuted,
+    backgroundColor: colors.surfaceAlt,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    fontSize: 10.5,
+    lineHeight: 15,
     textAlign: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    paddingTop: 4,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  emptyTitle: { color: '#e2e8f0', fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  emptyText: { color: '#94a3b8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 8 },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.sm,
+  },
 });

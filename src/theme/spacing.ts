@@ -18,6 +18,8 @@ export const radius = {
   sm: 8,
   md: 10,
   lg: 16,
+  xl: 20, // card radius in the October artifacts (--r-card)
+  xxl: 22, // hero / alert surfaces
   full: 9999,
 } as const;
 
