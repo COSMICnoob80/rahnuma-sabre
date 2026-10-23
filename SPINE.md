@@ -110,3 +110,5 @@
 
 - [ui-facelift] 4 legacy screens ported to design system; insets + statusbar done; hex count Advisory:22→0 Calculators:38→0 Settings:21→0 PinLock:10→0 — this commit
 - [brand-icon] deterministic generator scripts/generate_brand.py → assets/icon.png 1024x1024 (pre-rounded), adaptive-icon.png 1024x1024 (transparent, 66% safe zone), splash-icon.png 1024x1024, favicon.png 48x48 — emerald #3add9e + mist #e7ecf0 on #05090d (colors.background/textPrimary), geometric ڕ monogram (Nastaliq ر is a 24x36 hairline at 400pt, illegible at 48px), app.json splash/adaptive bg → #05090d — this commit
+
+- [gradle-forge] r3 v3 local native build: release — ~/Downloads/releases/rahnuma-sabre-r3-local-v3.apk (66,887,882 bytes) — sha256 1cb7563a… — versionCode 2→3, prebuild re-emitted brand mipmaps/splash + #0a1628→#05090d in colors.xml/styles.xml — BUILD SUCCESSFUL in 1m 22s (83s, vs r2 cold-cache) — r1/r2 backups re-verified unchanged — this commit
