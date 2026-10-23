@@ -107,3 +107,4 @@
 - [apk-forge] preview APK: FINISHED — /home/cosmicnoob/Downloads/rahnuma-sabre-preview.apk (66,959,054 bytes / 64M) + https://expo.dev/accounts/cosmicnoob80/projects/rahnuma-sabre/builds/6267aadf-7ce0-45f8-a11d-a79b20245b2f — buildId 6267aadf-7ce0-45f8-a11d-a79b20245b2f — no code fix, no commit
 
 - [gradle-forge] local native build: release r2 v2 — /home/cosmicnoob/Downloads/releases/rahnuma-sabre-r2-local-v2.apk — sha256 35ec4980 — this commit
+- [brand-icon] deterministic generator scripts/generate_brand.py → assets/icon.png 1024x1024 (pre-rounded), adaptive-icon.png 1024x1024 (transparent, 66% safe zone), splash-icon.png 1024x1024, favicon.png 48x48 — emerald #3add9e + mist #e7ecf0 on #05090d (colors.background/textPrimary), geometric ڕ monogram (Nastaliq ر is a 24x36 hairline at 400pt, illegible at 48px), app.json splash/adaptive bg → #05090d — this commit
