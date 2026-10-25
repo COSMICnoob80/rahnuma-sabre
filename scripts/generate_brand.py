@@ -6,218 +6,201 @@ Deterministic Pillow renderer for the complete Expo icon set:
     assets/icon.png          1024x1024  pre-rounded full-bleed app icon
     assets/adaptive-icon.png 1024x1024  transparent adaptive foreground
     assets/splash-icon.png   1024x1024  same mark as the adaptive foreground
-    assets/favicon.png         48x48    simplified small-size mark
+    assets/favicon.png         48x48    stroke-compensated small-size mark
 
-Every image comes from the single design spec below. No gradients, no
-anti-aliasing plugins, no fonts: flat fills drawn at 4x and downsampled with
-LANCZOS. Running this script twice must produce byte-identical PNGs.
+The artwork is the founder-approved "true black hero" from
+design/brand-logo.html (variant 01, row-true-black): a pure #000000 ground,
+a Times-class serif capital R at 0.76x the canvas, and a faint ascending
+ticker watermark (emerald, 9% line / 16% glow / 28% end dot, running
+bottom-left -> top-right).
 
-Design: a compass (رہنما — the Guide) rendered as a ring, eight ticks and a
-bold geometric ڕ monogram (reh + small v below). Deliberately NOT a wallet,
-coin, or upward chart arrow: Rahnuma is a money mirror, not a signal app.
+Geometry is authored in the board's 512-unit master-SVG space and scaled
+x2 into the 1024-unit render space, so the numbers below are traceable to
+design/brand-logo.html. Flat fills and one font; no gradients, no effects.
+Running this script twice must produce byte-identical PNGs.
 """
 
 from __future__ import annotations
 
 import hashlib
-import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 
 SS = 4  # supersampling factor for clean edges
+DESIGN = 1024  # render space (board master is 512, so every x2 below is intentional)
 
 
 # ---------------------------------------------------------------------------
 # Palette
 # ---------------------------------------------------------------------------
-# Canonical sRGB hex values. Sources are named per token.
-BG = "#05090d"        # src/theme/colors.ts -> colors.background
-MIST = "#e7ecf0"      # src/theme/colors.ts -> colors.textPrimary
-MUTED = "#838d98"     # src/theme/colors.ts -> colors.textSecondary
+BG = "#000000"        # founder-approved true-black hero ground
+PAPER = "#e7ecf0"     # src/theme/colors.ts -> colors.textPrimary (the R itself)
+ACCENT = "#3add9e"    # ticker watermark, the only accent
 
+# Watermark opacities, straight from design/brand-logo.html spec-list.
+LINE_OPACITY = 0.09
+GLOW_OPACITY = 0.16
+DOT_OPACITY = 0.28
 
-def oklch_to_hex(lightness: float, chroma: float, hue: float) -> str:
-    """Convert an OKLCH color to an sRGB hex string."""
-    a = chroma * math.cos(math.radians(hue))
-    b = chroma * math.sin(math.radians(hue))
-    l_ = lightness + 0.3963377774 * a + 0.2158037573 * b
-    m_ = lightness - 0.1055613458 * a - 0.0638541728 * b
-    s_ = lightness - 0.0894841775 * a - 1.2914855480 * b
-    l, m, s = l_**3, m_**3, s_**3
-    r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
-    g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
-    bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
-
-    def encode(x: float) -> float:
-        x = min(1.0, max(0.0, x))
-        return 12.92 * x if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055
-
-    return "#%02x%02x%02x" % tuple(round(encode(v) * 255) for v in (r, g, bl))
-
-
-# design/outlook-briefing.html -> :root { --accent: oklch(0.80 0.160 162) }
-ACCENT = oklch_to_hex(0.80, 0.160, 162)
-assert ACCENT == "#3add9e", ACCENT  # mirrors the artifact accent exactly
+# Board variant 01: "serif R 0.76x · ticker watermark 9% · 22% mask preview"
+R_RATIO = 0.76
+CORNER_RATIO = 0.22
 
 
 # ---------------------------------------------------------------------------
-# Drawing helpers (geometry is expressed in 1024-point space)
+# Typeface: the board's stack is 'Times New Roman', 'Liberation Serif',
+# Georgia, serif. First resolvable candidate wins; there is no system
+# default fallback so the bytes never depend on an unexpected face.
+# ---------------------------------------------------------------------------
+SERIF_CANDIDATES = (
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+    "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
+    "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
+)
+
+
+def serif_path() -> str:
+    for candidate in SERIF_CANDIDATES:
+        if Path(candidate).exists():
+            return candidate
+    raise SystemExit("no serif face found in " + ", ".join(SERIF_CANDIDATES))
+
+
+# Master-SVG geometry (design/brand-logo.html, panel 05) in 512-space.
+TICKER_512 = ((41, 440), (133, 379), (205, 399), (297, 276), (379, 215), (451, 123))
+TICKER_W_512 = 12
+GLOW_R_512 = 28
+DOT_R_512 = 12
+R_BASELINE_512 = (256, 387)
+R_SIZE_512 = round(R_RATIO * 512)  # 389, the board's caption font-size
+
+
+# ---------------------------------------------------------------------------
+# Drawing helpers (coordinates are 1024-design-space, multiplied by SS)
 # ---------------------------------------------------------------------------
 def _rgba(hex_color: str, alpha: int = 255) -> tuple[int, int, int, int]:
     h = hex_color.lstrip("#")
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), alpha
 
 
-def _line(d: ImageDraw.ImageDraw, p0, p1, width: int, fill) -> None:
-    """Straight stroke with round caps."""
-    d.line([p0, p1], fill=fill, width=width)
+def _scale(v: float) -> float:
+    """512-space master unit -> supersampled canvas pixels."""
+    return v * (DESIGN / 512) * SS
+
+
+def _with_alpha(img: Image.Image, opacity: float) -> Image.Image:
+    """Scale a full-coverage layer down to the board's watermark opacity."""
+    out = img.copy()
+    out.putalpha(img.getchannel("A").point(lambda v: round(v * opacity)))
+    return out
+
+
+def _polyline(pts, width: int, fill, size: int) -> Image.Image:
+    """Round-joined, round-capped polyline on its own transparent layer."""
+    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    d.line(pts, fill=fill, width=width, joint="curve")
     r = width / 2
-    for x, y in (p0, p1):
+    for x, y in (pts[0], pts[-1]):
         d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
+    return layer
 
 
-def _cubic(p0, p1, p2, p3, steps: int = 96):
-    """Sample a cubic Bezier onto a polyline."""
-    pts = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1 - t
-        pts.append(
-            (
-                u**3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t**3 * p3[0],
-                u**3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t**3 * p3[1],
-            )
-        )
-    return pts
-
-
-def _stroke(d: ImageDraw.ImageDraw, pts, width: int, fill) -> None:
-    """Polyline stroke with round joins/caps."""
-    for a, b in zip(pts, pts[1:]):
-        d.line([a, b], fill=fill, width=width)
-    r = width / 2
-    for x, y in pts:
-        d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
-
-
-def _ring(d: ImageDraw.ImageDraw, cx, cy, radius, width, fill) -> None:
-    d.ellipse(
-        [cx - radius, cy - radius, cx + radius, cy + radius],
-        outline=fill,
-        width=width,
-    )
+def _disc(centre, radius: float, fill, size: int) -> Image.Image:
+    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    cx, cy = centre
+    d.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=fill)
+    return layer
 
 
 # ---------------------------------------------------------------------------
-# Mark: compass ring + ticks + geometric ڕ
+# Mark: serif R over the ascending ticker watermark
 # ---------------------------------------------------------------------------
-def draw_mark(img: Image.Image, k: float, small: bool = False) -> None:
-    """Draw the compass monogram centred on the canvas.
+def render_mark(stroke_px: float = 0.0) -> Image.Image:
+    """Render the hero mark on transparency at full supersampled resolution.
 
-    k scales 1024-space coordinates to the supersampled canvas.
-    small=True uses heavier weights and drops fine detail for 48px.
+    stroke_px is a final-resolution stroke compensation (board row 04); it is
+    converted to canvas pixels so a 48px export keeps its stem weight.
     """
-    d = ImageDraw.Draw(img)
-    cx = cy = 512 * k
+    size = DESIGN * SS
+    mark = Image.new("RGBA", (size, size), (0, 0, 0, 0))
 
-    def p(x: float, y: float):
-        return (x * k, y * k)
+    accent = _rgba(ACCENT)
+    pts = [(_scale(x), _scale(y)) for x, y in TICKER_512]
+    end = pts[-1]
 
-    def s(v: float) -> float:
-        return max(1, round(v * k))
+    line = _polyline(pts, round(_scale(TICKER_W_512)), accent, size)
+    mark.alpha_composite(_with_alpha(line, LINE_OPACITY))
+    mark.alpha_composite(_with_alpha(_disc(end, _scale(GLOW_R_512), accent, size), GLOW_OPACITY))
+    mark.alpha_composite(_with_alpha(_disc(end, _scale(DOT_R_512), accent, size), DOT_OPACITY))
 
-    accent, mist, muted = _rgba(ACCENT), _rgba(MIST), _rgba(MUTED)
-
-    ring_w = 30 if small else 24
-    tick_w = 46 if small else 32
-    tick_len = 54 if small else 34
-    diag_w = 22 if small else 15
-    diag_len = 34 if small else 22
-    mono_w = 116 if small else 86
-    hook_w = 42 if small else 32
-
-    # Compass ring.
-    _ring(d, cx, cy, 300 * k, s(ring_w), mist)
-
-    # Cardinal ticks (emerald) sit just outside the ring.
-    for angle in (270, 0, 90, 180):  # N, E, S, W
-        a = math.radians(angle)
-        p0 = (512 + 322 * math.cos(a), 512 + 322 * math.sin(a))
-        p1 = (512 + (322 + tick_len) * math.cos(a), 512 + (322 + tick_len) * math.sin(a))
-        _line(d, p(*p0), p(*p1), s(tick_w), accent)
-
-    # Diagonal ticks (muted) — the "subtle geometric detail".
-    if not small:
-        for angle in (45, 135, 225, 315):
-            a = math.radians(angle)
-            p0 = (512 + 322 * math.cos(a), 512 + 322 * math.sin(a))
-            p1 = (512 + (322 + diag_len) * math.cos(a), 512 + (322 + diag_len) * math.sin(a))
-            _line(d, p(*p0), p(*p1), s(diag_w), muted)
-
-    # Geometric ڕ (reh with small v below), emerald.
-    # One continuous calligraphic stroke: descends from the upper right and
-    # flattens into a horizontal baseline foot sweeping left.
-    reh = _cubic((686, 336), (672, 400), (560, 648), (372, 648))
-    _stroke(d, [p(*pt) for pt in reh], s(mono_w), accent)
-
-    # Small v below -> the letter ڕ.
-    _line(d, p(394, 716), p(430, 752), s(hook_w), accent)
-    _line(d, p(430, 752), p(466, 716), s(hook_w), accent)
+    font = ImageFont.truetype(serif_path(), round(_scale(R_SIZE_512)))
+    d = ImageDraw.Draw(mark)
+    stroke = round(stroke_px * (DESIGN / 48) * SS) if stroke_px else 0
+    d.text(
+        (_scale(R_BASELINE_512[0]), _scale(R_BASELINE_512[1])),
+        "R",
+        font=font,
+        fill=_rgba(PAPER),
+        anchor="ms",
+        stroke_width=stroke,
+        stroke_fill=_rgba(PAPER),
+    )
+    return mark
 
 
 # ---------------------------------------------------------------------------
 # Frame: pre-rounded background
 # ---------------------------------------------------------------------------
-def _rounded_frame(img: Image.Image, k: float, margin: int, radius: int) -> None:
-    d = ImageDraw.Draw(img)
-    m = margin * k
-    size = img.width
-    d.rounded_rectangle(
-        [m, m, size - m, size - m],
-        radius=radius * k,
+def _grounded(mark: Image.Image) -> Image.Image:
+    """Composite the mark over the pre-rounded true-black ground."""
+    size = DESIGN * SS
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(img).rounded_rectangle(
+        [0, 0, size - 1, size - 1],
+        radius=round(CORNER_RATIO * size),
         fill=_rgba(BG),
     )
+    img.alpha_composite(mark)
+    return img
 
 
 # ---------------------------------------------------------------------------
 # Renderers
 # ---------------------------------------------------------------------------
 def render_icon() -> Image.Image:
-    size = 1024
-    img = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
-    k = SS
-    _rounded_frame(img, k, margin=24, radius=232)
-    draw_mark(img, k, small=False)
-    return img.resize((size, size), Image.LANCZOS)
+    return _grounded(render_mark()).resize((DESIGN, DESIGN), Image.LANCZOS)
 
 
 def render_foreground() -> Image.Image:
-    size = 1024
-    mark = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
-    draw_mark(mark, SS)
-    # Mark extent is ~373px radius; scale the whole mark about the canvas
-    # centre so it fits the 66% safe zone (676px) without drifting off-centre.
-    safe = 660 / (2 * 373)
-    scaled = mark.resize(
-        (round(size * SS * safe), round(size * SS * safe)), Image.LANCZOS
+    """Transparent adaptive foreground, mark fitted to the 66% safe zone."""
+    size = DESIGN * SS
+    mark = render_mark()
+
+    cropped = mark.crop(mark.getbbox())
+    factor = (0.66 * size) / max(cropped.width, cropped.height)
+    scaled = cropped.resize(
+        (round(cropped.width * factor), round(cropped.height * factor)), Image.LANCZOS
     )
-    canvas = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
-    offset = ((canvas.width - scaled.width) // 2, (canvas.height - scaled.height) // 2)
-    canvas.alpha_composite(scaled, offset)
-    return canvas.resize((size, size), Image.LANCZOS)
+
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    canvas.alpha_composite(
+        scaled,
+        ((size - scaled.width) // 2, (size - scaled.height) // 2),
+    )
+    return canvas.resize((DESIGN, DESIGN), Image.LANCZOS)
 
 
 def render_favicon() -> Image.Image:
-    size = 1024
-    img = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
-    k = SS
-    _rounded_frame(img, k, margin=12, radius=224)
-    draw_mark(img, k, small=True)
-    return img.resize((48, 48), Image.LANCZOS)
+    """48px export, stroke-compensated per board row 04 (+0.3px paper stroke)."""
+    return _grounded(render_mark(stroke_px=0.007 * 48)).resize((48, 48), Image.LANCZOS)
 
 
 # ---------------------------------------------------------------------------
@@ -260,18 +243,13 @@ def main() -> None:
         print(f"{name:20s} {image.width}x{image.height}  {path.stat().st_size:>7d} B  {digest}")
 
     print()
-    print(f"background  {BG}  (colors.background)")
-    print(f"accent      {ACCENT}  (outlook-briefing oklch(0.80 0.160 162))")
-    print(f"mist        {MIST}  (colors.textPrimary)")
-    print(f"muted       {MUTED}  (colors.textSecondary)")
+    print(f"serif       {serif_path()}  @ {round(R_RATIO * 100)}%")
+    print(f"background  {BG}  (true-black hero ground)")
+    print(f"paper       {PAPER}  (colors.textPrimary - the R)")
+    print(f"accent      {ACCENT}  (ticker watermark, {int(LINE_OPACITY * 100)}%)")
     print()
-    checks = {"accent": ACCENT, "mist": MIST, "muted": MUTED}
-    ratios = {}
-    for name, color in checks.items():
-        ratio = contrast(color, BG)
-        ratios[name] = ratio
-        print(f"contrast {name:7s} vs bg: {ratio:5.2f}:1")
-    print(f"contrast min     vs bg: {min(ratios.values()):5.2f}:1")
+    for name, color in (("paper", PAPER), ("accent", ACCENT)):
+        print(f"contrast {name:7s} vs bg: {contrast(color, BG):5.2f}:1")
 
 
 if __name__ == "__main__":
