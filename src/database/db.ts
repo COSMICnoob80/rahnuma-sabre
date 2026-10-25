@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Holding, Expense, Income } from '../types';
 import { todayLocal } from '../utils/calculators';
+import { ASSETS_MIGRATION_STATEMENTS } from './migrations';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -52,6 +53,14 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
   } catch {
     // Column already exists
   }
+
+  for (const statement of ASSETS_MIGRATION_STATEMENTS) {
+    try {
+      await db.execAsync(statement);
+    } catch {
+      // Statement already applied
+    }
+  }
 }
 
 // Holdings
@@ -80,6 +89,33 @@ export async function updateHoldingPrice(id: number, price: number): Promise<voi
 export async function deleteHolding(id: number): Promise<void> {
   const d = await getDb();
   await d.runAsync('DELETE FROM holdings WHERE id = ?', id);
+}
+
+// Assets
+export interface AssetRecord {
+  id?: number;
+  kind: string;
+  label: string;
+  amount_pkr: number;
+  source: string;
+  imported_at: string;
+  raw_line: string | null;
+}
+
+export type AssetInput = Omit<AssetRecord, 'id'>;
+
+export async function getAssets(): Promise<AssetRecord[]> {
+  const d = await getDb();
+  return d.getAllAsync<AssetRecord>('SELECT * FROM assets ORDER BY imported_at DESC, id DESC');
+}
+
+export async function addAsset(a: AssetInput): Promise<number> {
+  const d = await getDb();
+  const r = await d.runAsync(
+    'INSERT INTO assets (kind, label, amount_pkr, source, imported_at, raw_line) VALUES (?, ?, ?, ?, ?, ?)',
+    a.kind, a.label, a.amount_pkr, a.source, a.imported_at, a.raw_line
+  );
+  return r.lastInsertRowId;
 }
 
 // Expenses

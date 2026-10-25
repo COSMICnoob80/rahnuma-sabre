@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { ProviderId, PROVIDERS, providerById } from '../services/providers';
+import { getEmbeddedGroqKey } from '../services/advisoryKey';
 
 const LEGACY_OPENROUTER_KEY = 'openrouter_api_key';
 const LEGACY_OPENROUTER_MODEL = 'openrouter_model';
@@ -57,6 +58,14 @@ export async function getConfiguredProviders(): Promise<ConfiguredProvider[]> {
       configured.push({ id: provider.id, key, model: await getProviderModel(provider.id) });
     }
   }
+
+  if (!configured.some((provider) => provider.id === 'groq')) {
+    const embedded = getEmbeddedGroqKey();
+    if (embedded) {
+      configured.push({ id: 'groq', key: embedded, model: await getProviderModel('groq') });
+    }
+  }
+
   return configured;
 }
 

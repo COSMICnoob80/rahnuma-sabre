@@ -18,6 +18,7 @@ import {
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { Chip } from '../components';
+import { EMBEDDED_KEY_CHIP_LABEL, getEmbeddedGroqKey } from '../services/advisoryKey';
 
 const GREETING =
   "Assalam-o-Alaikum! I'm Rahnuma, your financial advisor. Ask me about your portfolio, FIRE planning, taxes, or any financial question.";
@@ -43,9 +44,11 @@ export default function AdvisoryScreen() {
   const [providerReady, setProviderReady] = useState<boolean | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<PersonaId | 'auto'>('auto');
   const [councilMode, setCouncilMode] = useState(false);
+  const [embeddedKeyActive, setEmbeddedKeyActive] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    setEmbeddedKeyActive(getEmbeddedGroqKey() !== null);
     (async () => setProviderReady(await hasAnyProvider()))();
   }, []);
 
@@ -197,6 +200,12 @@ export default function AdvisoryScreen() {
           />
         </ScrollView>
 
+        {embeddedKeyActive && (
+          <View style={styles.embeddedChipRow}>
+            <Chip label={EMBEDDED_KEY_CHIP_LABEL} />
+          </View>
+        )}
+
         <Text style={styles.controlsHint}>
           {councilMode
             ? 'The Oracle and the Risk Manager answer, then Rahnuma synthesises. Uses 3 model calls.'
@@ -278,6 +287,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     lineHeight: 15,
+  },
+  embeddedChipRow: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
   },
   chatList: { flex: 1, paddingHorizontal: spacing.lg },
   chatContent: { paddingVertical: spacing.md, paddingBottom: spacing.sm },

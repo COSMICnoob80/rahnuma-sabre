@@ -1,13 +1,19 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSetting, setSetting } from '../database/db';
+import { getSetting, setSetting, addAsset } from '../database/db';
 import { PROVIDERS, ProviderId } from '../services/providers';
 import {
   getProviderKey, setProviderKey, getProviderModel, setProviderModel,
 } from '../utils/secureStorage';
 import { hasPin, setPin, removePin } from '../utils/pinLock';
 import { exportAllData } from '../services/dataService';
+import {
+  ImportReport,
+  parseBankCsvReport,
+  parseFbrWealthLinesReport,
+  summarizeNetWorth,
+} from '../services/statementImport';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { Card, Button, Input, Chip } from '../components';
@@ -24,6 +30,9 @@ export default function SettingsScreen() {
   const [pinExists, setPinExists] = useState(false);
   const [keys, setKeys] = useState<KeysState>({});
   const [models, setModels] = useState<ModelsState>({});
+  const [importText, setImportText] = useState('');
+  const [importFormat, setImportFormat] = useState<'bank' | 'fbr'>('bank');
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
 
   const load = useCallback(async () => {
     const c = await getSetting('cash');
@@ -86,6 +95,60 @@ export default function SettingsScreen() {
   const handleSelectModel = async (id: ProviderId, model: string) => {
     setModels((prev) => ({ ...prev, [id]: model }));
     await setProviderModel(id, model);
+  };
+
+  const buildImportReport = (): ImportReport =>
+    importFormat === 'bank'
+      ? parseBankCsvReport(importText)
+      : parseFbrWealthLinesReport(importText);
+
+  const handlePreviewImport = () => {
+    const report = buildImportReport();
+    setImportReport(report);
+    if (report.rows.length === 0 && report.rejected.length === 0) {
+      Alert.alert('Nothing to parse', 'Paste statement lines above first.');
+    }
+  };
+
+  const handleImportPositions = async () => {
+    const report = buildImportReport();
+    if (report.rows.length === 0) {
+      setImportReport(report);
+      Alert.alert(
+        'Nothing to import',
+        report.rejected.length > 0
+          ? `${report.rejected.length} line(s) were rejected. Nothing was saved.`
+          : 'Paste statement lines above first.'
+      );
+      return;
+    }
+
+    const summary = summarizeNetWorth(report.rows);
+    const existing = parseFloat((await getSetting('cash')) ?? '0');
+    const existingCash = Number.isFinite(existing) ? existing : 0;
+    const nextCash = importFormat === 'fbr' ? summary.cash : existingCash + summary.cash;
+    await setSetting('cash', String(nextCash));
+
+    const importedAt = new Date().toISOString();
+    const assetRows = report.rows.filter((row) => row.kind !== 'cash' && row.kind !== 'bank');
+    for (const row of assetRows) {
+      await addAsset({
+        kind: row.kind,
+        label: row.label,
+        amount_pkr: row.amountPKR,
+        source: row.source,
+        imported_at: importedAt,
+        raw_line: row.rawLine,
+      });
+    }
+
+    setCashAmount(String(nextCash));
+    setImportReport(report);
+    setImportText('');
+    Alert.alert(
+      'Import complete',
+      `${report.rows.length} row(s) read, ${assetRows.length} position(s) saved. Cash balance updated to PKR ${nextCash.toLocaleString('en-PK')}.`
+    );
   };
 
   const saveButton = (label: string, onPress: () => void, danger = false) => (
@@ -209,6 +272,79 @@ export default function SettingsScreen() {
       </Card>
 
       <Card compact>
+        <Text style={styles.sectionTitle}>Import Financial Positions</Text>
+        <Text style={styles.hint}>
+          Paste bank statement CSV lines or an FBR wealth statement. Parsing runs on this device — nothing is uploaded and no credentials are asked for.
+        </Text>
+
+        <View style={styles.importModeRow}>
+          <Chip
+            label="Bank CSV"
+            selected={importFormat === 'bank'}
+            onPress={() => { setImportFormat('bank'); setImportReport(null); }}
+          />
+          <Chip
+            label="FBR wealth"
+            selected={importFormat === 'fbr'}
+            onPress={() => { setImportFormat('fbr'); setImportReport(null); }}
+          />
+        </View>
+
+        <Input
+          placeholder={
+            importFormat === 'bank'
+              ? 'date,description,creditPKR,debitPKR,balanceOBR\n2026-06-01,Salary,250,000,0,250,000'
+              : 'Cash in Hand: 250000\nGold: 500000\nProperty: 12000000'
+          }
+          value={importText}
+          onChangeText={(text) => { setImportText(text); setImportReport(null); }}
+          multiline
+          numberOfLines={6}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.pasteInput}
+        />
+
+        <View style={styles.row}>
+          {saveButton('Preview', handlePreviewImport)}
+          <Button
+            label="Import into local ledger"
+            onPress={handleImportPositions}
+            size="sm"
+            disabled={!importText.trim()}
+          />
+        </View>
+
+        {importReport && (
+          <View style={styles.previewBlock}>
+            <Text style={styles.previewLine}>
+              {importReport.rows.length} credited · {importReport.rejected.length} rejected
+            </Text>
+            {importReport.rows.slice(0, 5).map((row, index) => (
+              <View key={`${row.source}-${index}`} style={styles.previewRow}>
+                <Chip label={row.source.toUpperCase()} style={styles.sourceChip} />
+                <Text style={styles.previewRowText} numberOfLines={1}>
+                  {row.label} · PKR {row.amountPKR.toLocaleString('en-PK')}
+                </Text>
+              </View>
+            ))}
+            {importReport.rows.length > 5 && (
+              <Text style={styles.hint}>+ {importReport.rows.length - 5} more row(s)</Text>
+            )}
+            {importReport.rejected.map((rejected, index) => (
+              <Text key={`rejected-${index}`} style={styles.rejectedText} numberOfLines={2}>
+                Rejected: {rejected.line} — {rejected.reason}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.deferNote}>
+          File picker and OCR are not in this version — paste the text yourself. Bank CSV rows are recorded as net movements and added to your saved cash; FBR rows are balance snapshots and replace it.
+        </Text>
+      </Card>
+
+      <Card compact>
         <Text style={styles.sectionTitle}>App Lock</Text>
         {pinExists ? (
           <>
@@ -294,6 +430,20 @@ const styles = StyleSheet.create({
   modelRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
   modelChip: { marginBottom: spacing.sm },
   stackButton: { marginTop: spacing.sm },
+  importModeRow: { flexDirection: 'row', marginBottom: spacing.sm },
+  pasteInput: { minHeight: 96, textAlignVertical: 'top' },
+  previewBlock: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+  },
+  previewLine: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm },
+  previewRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
+  sourceChip: { marginRight: spacing.sm },
+  previewRowText: { color: colors.textSecondary, fontSize: 12, flex: 1 },
+  rejectedText: { color: colors.danger, fontSize: 11, lineHeight: 15, marginTop: spacing.xs },
+  deferNote: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: spacing.sm },
   aboutText: { color: colors.textSecondary, fontSize: 13, marginBottom: spacing.xs },
   disclaimer: {
     color: colors.textMuted,
