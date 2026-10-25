@@ -115,3 +115,5 @@
 
 - [import-positions] assets table+migration idempotent, statement import v1 (bank csv + FBR wealth), advisory personal-key prefill path — commit
 - [import-positions] FOLLOW-UP: imported `assets` rows are not yet part of Dashboard net worth — DashboardScreen is owned by the outlook lane, so merging `getAssets()` into the net-worth total is a separate beat.
+
+- [outlook-live] globalMarkets.ts + OutlookScreen + live probe evidences — providers verified: Yahoo chart `^GSPC` HTTP 200 symbol=/price=/prevClose=/changePct= (see tests/aux/probe-providers.mjs); HTML symbol pages 200 for `^IXIC`, `GC=F`, `BZ=F`, `PKR=X`; stooq CSV HTTP 404 (endpoint moved / anti-bot) so it stays runtime-gated and never used unverified; `KSE100.KAR` and `XAUEUR=X` both 404 → national KSE-100 renders a labelled degraded quote, gold ships as verified `GC=F` (Gold XAU, USD quoted) — 89/89 tests, tsc clean, grep gate 1 hit = pinned closing line only — commit

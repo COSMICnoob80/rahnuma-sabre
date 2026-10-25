@@ -83,12 +83,20 @@ export default function DashboardScreen() {
     >
       <Text style={styles.date}>{now.toLocaleDateString('en-PK', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
 
-      <Button
-        label="Morning briefing"
-        onPress={() => navigation.navigate('Briefing')}
-        variant="secondary"
-        style={styles.briefingBtn}
-      />
+      <View style={styles.entryRow}>
+        <Button
+          label="Morning briefing"
+          onPress={() => navigation.navigate('Briefing')}
+          variant="secondary"
+          style={styles.entryBtn}
+        />
+        <Button
+          label="Market outlook"
+          onPress={() => navigation.navigate('Outlook')}
+          variant="secondary"
+          style={[styles.entryBtn, styles.entryBtnSpaced]}
+        />
+      </View>
 
       {/* Net Worth */}
       <Card>
@@ -154,7 +162,9 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
   date: { color: colors.textMuted, fontSize: 14, marginBottom: spacing.lg, marginTop: spacing.sm },
-  briefingBtn: { alignSelf: 'flex-start', paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  entryRow: { flexDirection: 'row', marginBottom: spacing.lg },
+  entryBtn: { flex: 1, paddingHorizontal: spacing.md },
+  entryBtnSpaced: { marginLeft: spacing.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   progressBarBg: {
     backgroundColor: colors.border,

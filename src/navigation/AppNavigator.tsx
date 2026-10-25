@@ -6,6 +6,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import DashboardScreen from '../screens/DashboardScreen';
 import BriefingScreen from '../screens/BriefingScreen';
+import OutlookScreen from '../screens/OutlookScreen';
 import PortfolioScreen from '../screens/PortfolioScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
@@ -126,6 +127,11 @@ export default function AppNavigator() {
             name="Briefing"
             component={BriefingScreen}
             options={{ title: 'Morning briefing' }}
+          />
+          <Stack.Screen
+            name="Outlook"
+            component={OutlookScreen}
+            options={{ title: 'Market outlook' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
