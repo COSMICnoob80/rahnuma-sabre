@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  NATIONAL_PROVIDER_LADDER,
   OUTLOOK_CACHE_PREFIX,
   OUTLOOK_CACHE_TTL_MS,
   OUTLOOK_SYMBOLS,
@@ -9,6 +10,9 @@ import {
   freshnessChip,
   isCacheFresh,
   outlookCacheKey,
+  outlookDegradedSymbols,
+  parseDpsCompanyQuote,
+  parseDpsIndexRow,
   parseStooqCsv,
   parseYahooChart,
   toChips,
@@ -187,3 +191,85 @@ test('contract: provider URLs encode tickers instead of interpolating them raw',
     'https://query1.finance.yahoo.com/v8/finance/chart/BZ%3DF?interval=1d&range=5d'
   );
 });
+
+// Captured verbatim from https://dps.psx.com.pk/indices on 2026-10-25
+// (KSE100 row + the KSE100PR row that follows it).
+const DPS_INDICES_ROW =
+  '<table class="tbl"><thead class="tbl__head"><tr><th>Index</th><th class="right">High</th><th class="right">Low</th><th class="right">Current</th><th class="right">Change</th><th class="right">% Change</th></tr></thead><tbody class="tbl__body"><tr><td><a class="link" href="javascript:;" data-code="KSE100"><b>KSE100</b></a></td><td class="right" data-order="163966.86">163,966.86</td><td class="right" data-order="162292.44">162,292.44</td><td class="right" data-order="162374.87">162,374.87</td><td class="right change__text--neg" data-order="-1549.4400000000023"><i class="icon-down-dir"></i> -1549.44</td><td class="right change__text--neg" data-order="-0.9452167283790929"><i class="icon-down-dir"></i> -0.95%</td></tr><tr><td><a class="link" href="javascript:;" data-code="KSE100PR"><b>KSE100PR</b></a></td><td class="right" data-order="48972.34">48,972.34</td><td class="right" data-order="48472.24">48,472.24</td><td class="right" data-order="48496.86">48,496.86</td><td class="right change__text--neg" data-order="-462.7699999999968"><i class="icon-down-dir"></i> -462.77</td><td class="right change__text--neg" data-order="-0.9452073065094586"><i class="icon-down-dir"></i> -0.95%</td></tr></tbody></table>';
+
+test('parse: DPS indices row reads the captured KSE-100 current value and % change', () => {
+  assert.deepEqual(parseDpsIndexRow(DPS_INDICES_ROW), {
+    price: 162374.87,
+    changePct: -0.95,
+    currency: 'PKR',
+  });
+});
+
+test('parse: DPS index anchor does not confuse KSE100 with KSE100PR', () => {
+  assert.equal(parseDpsIndexRow(DPS_INDICES_ROW, 'KSE100PR')?.price, 48496.86);
+  assert.equal(parseDpsIndexRow(DPS_INDICES_ROW, 'KSE30'), null);
+});
+
+test('parse: DPS indices rejects the SPA 404 body and rows without five cells', () => {
+  assert.equal(parseDpsIndexRow(''), null);
+  assert.equal(parseDpsIndexRow('<html><body>Not Found</body></html>'), null);
+  assert.equal(
+    parseDpsIndexRow('<tr><td data-code="KSE100">x</td><td data-order="1"></td></tr>'),
+    null
+  );
+  assert.equal(
+    parseDpsIndexRow('<tr><td data-code="KSE100"></td><td data-order="0"></td></tr>' +
+      '<td data-order="1"></td><td data-order="2"></td><td data-order="3"></td><td data-order="4"></td>'),
+    null
+  );
+});
+
+// Captured verbatim from https://dps.psx.com.pk/company/{symbol} on 2026-10-25.
+const DPS_OGDC_QUOTE =
+  '<div class="quote__price"><div class="quote__close">Rs.298.12</div><div class="quote__change change__text--neg"><div class="change__direction"><i class="icon-down-dir"></i> </div><div class="change__value">-2.38</div><div class="change__percent">  (-0.79%)</div></div></div><div class="quote__chart"><div class="chart" id="companyDailyChart"></div></div>';
+const DPS_ENGRO_QUOTE =
+  '<div class="quote__price"><div class="quote__close">Rs.485.38</div><div class="quote__change change__text--pos"><div class="change__direction"><i class="icon-up-dir"></i> </div><div class="change__value">7.08</div><div class="change__percent"> (1.48%)</div></div></div><div class="quote__chart"></div>';
+
+test('parse: DPS company page reads the captured negative quote block', () => {
+  assert.deepEqual(parseDpsCompanyQuote(DPS_OGDC_QUOTE), {
+    price: 298.12,
+    changePct: -0.79,
+    currency: 'PKR',
+  });
+});
+
+test('parse: DPS company page signs an unsigned positive percent from its class', () => {
+  assert.deepEqual(parseDpsCompanyQuote(DPS_ENGRO_QUOTE), {
+    price: 485.38,
+    changePct: 1.48,
+    currency: 'PKR',
+  });
+});
+
+test('parse: DPS company page rejects an error body instead of inventing a price', () => {
+  assert.equal(parseDpsCompanyQuote(''), null);
+  assert.equal(parseDpsCompanyQuote('<html><body>Internal Server Error</body></html>'), null);
+  assert.equal(parseDpsCompanyQuote('<div class="quote__close">Rs.0.00</div>'), null);
+});
+
+test('ladder: national resolves DPS live, then Yahoo suffix probe, then 24h cache', () => {
+  assert.deepEqual(NATIONAL_PROVIDER_LADDER, [
+    'psx_dps_indices',
+    'yahoo_national_suffix',
+    'cache',
+  ]);
+});
+
+test('degraded: a national row with no provider and no cache is flagged, never dropped', () => {
+  const national = OUTLOOK_SYMBOLS.find((s) => s.region === 'national');
+  assert.ok(national);
+
+  const quotes = [
+    quote(),
+    buildDegradedQuote(national, null, NOW),
+  ];
+  assert.deepEqual(outlookDegradedSymbols(quotes), ['KSE100.KAR']);
+  assert.equal(toChips(quotes[1]).value, 'No quote on device');
+  assert.equal(freshnessChip(quotes[1], NOW), 'no data');
+});
+

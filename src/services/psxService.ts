@@ -1,4 +1,5 @@
 import { getHoldings, updateHoldingPrice } from '../database/db';
+import { fetchDpsCompanyPrice } from './globalMarkets';
 
 export { priceFreshness } from './priceFreshness';
 export type { PriceFreshness } from './priceFreshness';
@@ -28,7 +29,9 @@ async function fetchPrice(ticker: string): Promise<number | null> {
     const price = await fetchPriceFromHost(host, ticker);
     if (price !== null) return price;
   }
-  return null;
+  // Yahoo 429s whole host families for some networks; PSX's own server-rendered
+  // company page is the verified second path (probed 2026-10-25).
+  return fetchDpsCompanyPrice(ticker);
 }
 
 export interface RefreshResult {

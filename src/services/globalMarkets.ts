@@ -27,8 +27,9 @@ export interface OutlookSymbol {
   region: OutlookRegion;
 }
 
-// KSE-100 keeps the existing psxService path: a Yahoo chart request for the
-// .KAR ticker. International symbols are Yahoo chart tickers.
+// The national row is resolved by its own ladder (see NATIONAL_PROVIDER_LADDER):
+// PSX's own DPS indices page first, then a remembered Yahoo suffix probe.
+// The remaining symbols are Yahoo chart tickers.
 export const OUTLOOK_SYMBOLS: OutlookSymbol[] = [
   { sourceSymbol: 'KSE100.KAR', display: 'KSE-100', region: 'national' },
   { sourceSymbol: '^GSPC', display: 'S&P 500', region: 'international' },
@@ -48,6 +49,13 @@ const REQUEST_TIMEOUT_MS = 8_000;
 const YAHOO_SOURCE = 'Yahoo Finance chart';
 const STOOQ_SOURCE = 'Stooq CSV';
 const STOOQ_BASE = 'https://stooq.com/q/l/';
+
+// PSX Data Portal. The /timeseries/{eod,int}/{symbol} JSON routes are WAF-gated
+// for this client family (probed 2026-10-25: 404 bare, 403 with XHR headers), so
+// the server-rendered pages are the verified free path.
+const DPS_SOURCE = 'PSX DPS indices';
+const DPS_INDICES_URL = 'https://dps.psx.com.pk/indices';
+const DPS_COMPANY_BASE = 'https://dps.psx.com.pk/company';
 
 export const OUTLOOK_CACHE_PREFIX = 'outlook_cache_';
 export const OUTLOOK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -127,6 +135,83 @@ export function parseStooqCsv(csv: string): ParsedMarketQuote | null {
   const price = Number(cells[closeIndex]);
   if (!Number.isFinite(price) || price <= 0) return null;
   return { price, changePct: null, currency: null };
+}
+
+// DPS /indices is a server-rendered table (captured 2026-10-25). One row per
+// index, five numeric cells in this documented order:
+//   <td data-order="163966.86"> high
+//   <td data-order="162292.44"> low
+//   <td data-order="162374.87"> current
+//   <td data-order="-1549.44"> change
+//   <td data-order="-0.945216…"> % change
+// The anchor is the row's own data-code, so $INDX tables for other codes on the
+// page cannot be mistaken for it.
+export function parseDpsIndexRow(html: string, indexCode = 'KSE100'): ParsedMarketQuote | null {
+  if (typeof html !== 'string' || html.length === 0) return null;
+  const anchor = html.indexOf(`data-code="${indexCode}"`);
+  if (anchor < 0) return null;
+  const rowStart = html.lastIndexOf('<tr', anchor);
+  const rowEnd = html.indexOf('</tr>', anchor);
+  if (rowStart < 0 || rowEnd < 0) return null;
+
+  const orders: number[] = [];
+  const cell = /data-order="(-?\d+(?:\.\d+)?)"/g;
+  const row = html.slice(rowStart, rowEnd);
+  let match: RegExpExecArray | null;
+  while ((match = cell.exec(row)) !== null) {
+    orders.push(Number(match[1]));
+  }
+  if (orders.length < 5) return null;
+
+  const [, , price, change, rawPct] = orders;
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const previousClose = price - change;
+  const changePct =
+    Number.isFinite(rawPct) && rawPct !== 0
+      ? round2(rawPct)
+      : Number.isFinite(change) && previousClose > 0
+        ? round2((change / previousClose) * 100)
+        : rawPct === 0
+          ? 0
+          : null;
+
+  return { price, changePct, currency: 'PKR' };
+}
+
+// DPS /company/{symbol} quote block (captured 2026-10-25):
+//   <div class="quote__price">
+//     <div class="quote__close">Rs.298.12</div>
+//     <div class="quote__change change__text--neg">
+//       <div class="change__value">-2.38</div>
+//       <div class="change__percent"> (-0.79%)</div>
+// Positive rows print `change__text--pos` and an unsigned value/percent
+// ("7.08", " (1.48%)"), so the sign is taken from the class or the change value.
+export function parseDpsCompanyQuote(html: string): ParsedMarketQuote | null {
+  if (typeof html !== 'string' || html.length === 0) return null;
+  const blockStart = html.indexOf('class="quote__price"');
+  if (blockStart < 0) return null;
+  const chartAt = html.indexOf('class="quote__chart"', blockStart);
+  const block = html.slice(blockStart, chartAt > blockStart ? chartAt : undefined);
+
+  const close = /class="quote__close"[^>]*>\s*(?:Rs\.?\s*)?([\d,]+(?:\.\d+)?)/.exec(block);
+  if (!close) return null;
+  const price = Number(close[1].replace(/,/g, ''));
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const changeValue = /class="change__value"[^>]*>\s*([-+]?[\d,]+(?:\.\d+)?)/.exec(block);
+  const percent = /class="change__percent"[^>]*>\s*\(?\s*([-+]?[\d.]+)\s*%\s*\)?/.exec(block);
+  let changePct: number | null = null;
+  if (percent) {
+    const magnitude = Math.abs(Number(percent[1]));
+    if (Number.isFinite(magnitude)) {
+      const signed = changeValue ? Number(changeValue[1].replace(/,/g, '')) : Number.NaN;
+      const negative = /change__text--neg/.test(block) || signed < 0;
+      changePct = round2(negative ? -magnitude : magnitude);
+    }
+  }
+
+  return { price, changePct, currency: 'PKR' };
 }
 
 export function priceNoteFor(currency: string | null, region: OutlookRegion): string | null {
@@ -265,6 +350,94 @@ async function fetchStooqQuote(sourceSymbol: string): Promise<ParsedMarketQuote 
   return parsed;
 }
 
+async function fetchDpsIndexQuote(): Promise<ParsedMarketQuote | null> {
+  const response = await fetchWithTimeout(DPS_INDICES_URL, {
+    'User-Agent': BROWSER_UA,
+    Accept: 'text/html,application/xhtml+xml',
+  });
+  if (!response || !response.ok) return null;
+  const body = await response.text().catch(() => '');
+  return parseDpsIndexRow(body);
+}
+
+// Holdings refresh path: one server-rendered company page per ticker. Only a
+// parsed positive close counts, so an error page can never become a price.
+export async function fetchDpsCompanyPrice(ticker: string): Promise<number | null> {
+  const symbol = ticker.trim().toUpperCase();
+  if (!/^[A-Z0-9]{1,12}$/.test(symbol)) return null;
+  const response = await fetchWithTimeout(`${DPS_COMPANY_BASE}/${symbol}`, {
+    'User-Agent': BROWSER_UA,
+    Accept: 'text/html,application/xhtml+xml',
+  });
+  if (!response || !response.ok) return null;
+  const body = await response.text().catch(() => '');
+  return parseDpsCompanyQuote(body)?.price ?? null;
+}
+
+// Yahoo hides the KSE-100 behind different suffixes and rate-limits whole host
+// families (probed 2026-10-25: 429 on .KSE, .KA and .KAR). Whichever suffix
+// parses is remembered for the session; rejected suffixes are not retried.
+const NATIONAL_YAHOO_CODE = 'KSE100';
+const NATIONAL_YAHOO_SUFFIXES = ['.KSE', '.KA', '.KAR'];
+let nationalYahooSuffix: string | null = null;
+const nationalYahooRejected = new Set<string>();
+
+interface NationalProviderResult {
+  quote: ParsedMarketQuote;
+  source: string;
+}
+
+async function fetchNationalYahooQuote(): Promise<NationalProviderResult | null> {
+  if (nationalYahooSuffix !== null) {
+    const symbol = `${NATIONAL_YAHOO_CODE}${nationalYahooSuffix}`;
+    const parsed = await fetchYahooQuote(symbol);
+    return parsed ? { quote: parsed, source: `${YAHOO_SOURCE} (${symbol})` } : null;
+  }
+
+  for (const suffix of NATIONAL_YAHOO_SUFFIXES) {
+    if (nationalYahooRejected.has(suffix)) continue;
+    const symbol = `${NATIONAL_YAHOO_CODE}${suffix}`;
+    const parsed = await fetchYahooQuote(symbol);
+    if (parsed) {
+      nationalYahooSuffix = suffix;
+      return { quote: parsed, source: `${YAHOO_SOURCE} (${symbol})` };
+    }
+    nationalYahooRejected.add(suffix);
+  }
+  return null;
+}
+
+export type NationalProviderId = 'psx_dps_indices' | 'yahoo_national_suffix' | 'cache';
+
+const NATIONAL_PROVIDERS: Array<{
+  id: Exclude<NationalProviderId, 'cache'>;
+  fetch: () => Promise<NationalProviderResult | null>;
+}> = [
+  {
+    id: 'psx_dps_indices',
+    fetch: async () => {
+      const quote = await fetchDpsIndexQuote();
+      return quote ? { quote, source: DPS_SOURCE } : null;
+    },
+  },
+  { id: 'yahoo_national_suffix', fetch: fetchNationalYahooQuote },
+];
+
+// Resolution order actually walked for the KSE-100 row: live DPS, remembered
+// Yahoo suffix, then the 24h cache, then a labelled no-data quote.
+export const NATIONAL_PROVIDER_LADDER: NationalProviderId[] = [
+  ...NATIONAL_PROVIDERS.map((provider) => provider.id),
+  'cache',
+];
+
+async function fetchNationalQuote(): Promise<NationalProviderResult | null> {
+  for (const provider of NATIONAL_PROVIDERS) {
+    const result = await provider.fetch();
+    if (result) return result;
+  }
+  return null;
+}
+
 async function readCacheEntry(sourceSymbol: string, now: number): Promise<OutlookCacheEntry | null> {
   try {
     const { getSetting } = await import('../database/db');
@@ -296,14 +469,21 @@ async function writeCacheEntry(sourceSymbol: string, entry: OutlookCacheEntry): 
 
 async function fetchOne(spec: OutlookSymbol, now: number): Promise<InstrumentQuote> {
   try {
-    let parsed = await fetchYahooQuote(spec.sourceSymbol);
-    let source = YAHOO_SOURCE;
-    if (!parsed) {
-      parsed = await fetchStooqQuote(spec.sourceSymbol);
-      source = STOOQ_SOURCE;
+    let resolved: NationalProviderResult | null;
+    if (spec.region === 'national') {
+      resolved = await fetchNationalQuote();
+    } else {
+      let parsed = await fetchYahooQuote(spec.sourceSymbol);
+      let source = YAHOO_SOURCE;
+      if (!parsed) {
+        parsed = await fetchStooqQuote(spec.sourceSymbol);
+        source = STOOQ_SOURCE;
+      }
+      resolved = parsed ? { quote: parsed, source } : null;
     }
 
-    if (parsed) {
+    if (resolved) {
+      const { quote: parsed, source } = resolved;
       const priceNote = priceNoteFor(parsed.currency, spec.region);
       await writeCacheEntry(spec.sourceSymbol, {
         t: now,
@@ -332,9 +512,13 @@ async function fetchOne(spec: OutlookSymbol, now: number): Promise<InstrumentQuo
   }
 }
 
+export function outlookDegradedSymbols(quotes: InstrumentQuote[]): string[] {
+  return quotes.filter((q) => !q.fresh).map((q) => q.symbol);
+}
+
 export async function fetchOutlookQuotes(
   now: number = Date.now()
 ): Promise<{ quotes: InstrumentQuote[]; degraded: string[] }> {
   const quotes = await Promise.all(OUTLOOK_SYMBOLS.map((spec) => fetchOne(spec, now)));
-  return { quotes, degraded: quotes.filter((q) => !q.fresh).map((q) => q.symbol) };
+  return { quotes, degraded: outlookDegradedSymbols(quotes) };
 }
