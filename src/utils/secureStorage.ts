@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { platformStore } from './webStorageAdapter';
 import { ProviderId, PROVIDERS, providerById } from '../services/providers';
 import { getEmbeddedGroqKey } from '../services/advisoryKey';
 
@@ -15,7 +15,7 @@ function modelName(id: ProviderId): string {
 
 export async function getProviderKey(id: ProviderId): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(keyName(id));
+    return await platformStore.getItemAsync(keyName(id));
   } catch {
     return null;
   }
@@ -23,15 +23,15 @@ export async function getProviderKey(id: ProviderId): Promise<string | null> {
 
 export async function setProviderKey(id: ProviderId, key: string): Promise<void> {
   if (key.trim()) {
-    await SecureStore.setItemAsync(keyName(id), key.trim());
+    await platformStore.setItemAsync(keyName(id), key.trim());
   } else {
-    await SecureStore.deleteItemAsync(keyName(id));
+    await platformStore.deleteItemAsync(keyName(id));
   }
 }
 
 export async function getProviderModel(id: ProviderId): Promise<string> {
   try {
-    const stored = await SecureStore.getItemAsync(modelName(id));
+    const stored = await platformStore.getItemAsync(modelName(id));
     return stored || providerById(id).defaultModel;
   } catch {
     return providerById(id).defaultModel;
@@ -39,7 +39,7 @@ export async function getProviderModel(id: ProviderId): Promise<string> {
 }
 
 export async function setProviderModel(id: ProviderId, model: string): Promise<void> {
-  await SecureStore.setItemAsync(modelName(id), model);
+  await platformStore.setItemAsync(modelName(id), model);
 }
 
 export interface ConfiguredProvider {

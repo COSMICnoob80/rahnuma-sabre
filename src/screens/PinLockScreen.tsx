@@ -58,6 +58,14 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   return (
     <View style={styles.container}>
+      {Platform.OS === 'web' && (
+        <View style={styles.webBanner}>
+          <Text style={styles.webBannerText}>
+            Web preview mode — data lives in this browser tab's storage only. Not your phone, not production.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.hero}>
         <Text style={styles.brand}>RAHNUMA</Text>
         <Text style={styles.wordmark}>SABRE</Text>
@@ -118,6 +126,23 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
   },
   hero: { alignItems: 'center', marginBottom: spacing.xxl + spacing.md },
+  webBanner: {
+    width: '100%',
+    maxWidth: 420,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    backgroundColor: colors.warningTint,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  webBannerText: {
+    color: colors.warning,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
   brand: {
     color: colors.textMuted,
     fontSize: 10,

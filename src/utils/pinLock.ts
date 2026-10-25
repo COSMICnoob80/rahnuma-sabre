@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { platformStore } from './webStorageAdapter';
 
 // The PIN is a short secret, so two things matter: the stored value must never
 // sit in plaintext in the SQLite file, and guesses must be throttled. The OS
@@ -23,19 +23,19 @@ function hash(pin: string): string {
 
 async function read(key: string): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(key);
+    return await platformStore.getItemAsync(key);
   } catch {
     return null;
   }
 }
 
 async function write(key: string, value: string): Promise<void> {
-  await SecureStore.setItemAsync(key, value);
+  await platformStore.setItemAsync(key, value);
 }
 
 async function clear(key: string): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(key);
+    await platformStore.deleteItemAsync(key);
   } catch {
     // Nothing stored under this key.
   }
