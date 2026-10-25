@@ -1,8 +1,8 @@
 # WHY — Rahnuma Sabre Product Charter
 
 **One sentence (the North Star):**
-> A private, offline, Urdu mirror of your money: it shows you reality — correct math, real
-> numbers, what your habits already imply — and refuses to gamble with it.
+> **Pakistan's first always-fresh, Urdu-hybrid, never-advising agentic council for PSX investors.**
+
 
 This file is the vector every future decision checks against. Feature requests that move
 toward it are in scope. Anything that moves toward feature parity with cloud
