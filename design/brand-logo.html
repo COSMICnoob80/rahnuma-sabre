@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rahnuma SABRE — App Icon Design Board</title>
+<style>
+  :root{
+    --board:    oklch(0.095 0.012 250);
+    --panel:    oklch(0.185 0.014 250);
+    --panel-2:  oklch(0.228 0.017 250);
+    --border:   oklch(0.27 0.016 250);
+    --fg:       oklch(0.94 0.008 250);
+    --muted:    oklch(0.64 0.020 250);
+    --ink:      #05090d;
+    --emerald:  #3add9e;
+    --paper:    #e7ecf0;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+    --serif: "Times New Roman", "Liberation Serif", Georgia, serif;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin: 0; }
+  body{
+    min-height: 100vh;
+    background: var(--board);
+    font-family: var(--sans);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    padding: 44px 40px 56px;
+  }
+  .board{
+    max-width: 1160px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---------- board header ---------- */
+  .board-head{ padding-bottom: 6px; }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--emerald);
+    margin: 0;
+  }
+  .board-head h1{
+    margin: 12px 0 0;
+    font-family: var(--serif);
+    font-size: clamp(34px, 4vw, 46px);
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1.1;
+    color: var(--paper);
+  }
+  .board-head h1 em{
+    font-style: normal;
+    letter-spacing: .16em;
+  }
+  .board-meta{
+    margin: 10px 0 0;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .head-rule{
+    display: block;
+    width: 100%;
+    height: 34px;
+    margin-top: 18px;
+  }
+
+  /* ---------- panels ---------- */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 26px 26px;
+  }
+  .panel-label{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .panel-label h2{
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--fg);
+  }
+  .panel-label h2 .num{ color: var(--emerald); margin-right: 10px; }
+  .panel-label .spec{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- size-proof rows ---------- */
+  .row-items{
+    display: flex;
+    align-items: flex-end;
+    gap: 52px;
+    flex-wrap: wrap;
+  }
+  .proof{
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .proof figcaption{
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .proof .px{
+    font-family: var(--mono);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--paper);
+    font-variant-numeric: tabular-nums;
+  }
+  .proof .use{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ---------- the icon ---------- */
+  .icon{
+    position: relative;
+    width: var(--s);
+    height: var(--s);
+    border-radius: 22%;
+    overflow: hidden;
+    background: #000000;
+    border: 1px solid rgba(231, 236, 240, .10);
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .icon.ink{ background: var(--ink); }
+  .icon .ticker{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .icon .mark{
+    position: relative;
+    z-index: 2;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: calc(var(--s) * 0.76);
+    line-height: 1;
+    color: var(--paper);
+    user-select: none;
+  }
+  .icon.comp .mark{
+    -webkit-text-stroke: calc(var(--s) * 0.007) var(--paper);
+  }
+  .icon .hairline{
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    bottom: calc(var(--s) * 0.195);
+    transform: translateX(-50%);
+    width: calc(var(--s) * 0.40);
+    height: max(1px, calc(var(--s) * 0.006));
+    background: var(--emerald);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+
+  /* ---------- A/B check row ---------- */
+  .ab-note{
+    margin: 0 0 18px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 64ch;
+  }
+
+  /* ---------- master svg ---------- */
+  .master-grid{
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) 1fr;
+    gap: 30px;
+    align-items: start;
+  }
+  .master-frame{
+    background: var(--board);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+  .master-tag{
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    color: var(--emerald);
+    border: 1px solid rgba(58, 221, 158, .45);
+    background: rgba(58, 221, 158, .08);
+    border-radius: 999px;
+    padding: 5px 11px;
+  }
+  .master-svg{
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 344px;
+    border-radius: 20%;
+    border: 1px solid rgba(231, 236, 240, .10);
+  }
+  .master-caption{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: .06em;
+    text-align: center;
+  }
+  .spec-list{
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .spec-list li{
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .spec-list li:last-child{ border-bottom: 0; }
+  .spec-list .k{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--emerald);
+    padding-top: 2px;
+  }
+  .spec-list .v{ color: var(--fg); }
+  .spec-list .v code{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--paper);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 6px;
+  }
+
+  /* ---------- palette + notes ---------- */
+  .split{
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) 1fr;
+    gap: 30px;
+    align-items: start;
+  }
+  .palette{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .swatch{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .swatch .chip{
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    flex: none;
+    border: 1px solid rgba(231, 236, 240, .14);
+  }
+  .swatch .meta{ display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .swatch .hex{
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--paper);
+    font-variant-numeric: tabular-nums;
+  }
+  .swatch .role{
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .notes{
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: note;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .notes li{
+    counter-increment: note;
+    position: relative;
+    padding: 13px 15px 13px 46px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--fg);
+  }
+  .notes li::before{
+    content: counter(note, decimal-leading-zero);
+    position: absolute;
+    left: 15px; top: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--emerald);
+  }
+  .notes li b{ color: var(--paper); font-weight: 700; }
+  .notes li .mono{ font-family: var(--mono); font-size: 12px; }
+
+  /* ---------- board footer ---------- */
+  .board-foot{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: var(--muted);
+    text-align: center;
+    padding-top: 4px;
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--emerald);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 900px){
+    body{ padding: 28px 18px 40px; }
+    .master-grid, .split{ grid-template-columns: 1fr; }
+    .spec-list li{ grid-template-columns: 1fr; gap: 4px; }
+    .row-items{ gap: 34px; }
+  }
+</style>
+</head>
+<body>
+  <div class="board" data-od-id="brand-logo-board">
+
+    <header class="board-head" data-od-id="brand-logo-header"
+            aria-label="Rahnuma Sabre app icon design board. Serif capital R mark with ascending ticker watermark, shown at 512, 96 and 48 pixels.">
+      <p class="eyebrow">Rahnuma Sabre · Brand</p>
+      <h1 data-od-id="brand-logo-heading">App Icon — The Serif <em>R</em></h1>
+      <p class="board-meta">512 / 96 / 48 px launcher proof · flat fills · no gradients · no external fonts</p>
+      <svg class="head-rule" viewBox="0 0 1160 34" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <path d="M0 30 L180 24 L340 27 L520 16 L700 19 L880 8 L1060 11 L1160 3"
+              fill="none" stroke="#3add9e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".14"/>
+        <circle cx="1160" cy="3" r="2.5" fill="#3add9e" opacity=".3"/>
+      </svg>
+    </header>
+
+    <!-- 01 — hero on true black -->
+    <section class="panel" data-od-id="row-true-black"
+             aria-label="Variant one: hero icon on true black background, shown at 512, 96 and 48 pixels.">
+      <div class="panel-label">
+        <h2><span class="num">01</span>Hero · True Black #000000</h2>
+        <span class="spec">serif R 0.76× · ticker watermark 9% · square artwork, 22% mask preview</span>
+      </div>
+      <div class="row-items">
+        <figure class="proof">
+          <div class="icon" style="--s:512px" data-od-id="black-icon-512" role="img"
+               aria-label="App icon 512 pixels: serif R on true black with faint ascending ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">512</span><span class="use">store master</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon" style="--s:96px" data-od-id="black-icon-96" role="img"
+               aria-label="App icon 96 pixels: serif R on true black with ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">96</span><span class="use">launcher</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon" style="--s:48px" data-od-id="black-icon-48" role="img"
+               aria-label="App icon 48 pixels: serif R on true black with ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">48</span><span class="use">notification</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 02 — hero on ink -->
+    <section class="panel" data-od-id="row-ink"
+             aria-label="Variant two: hero icon on ink background 05090d, shown at 512, 96 and 48 pixels.">
+      <div class="panel-label">
+        <h2><span class="num">02</span>Hero · Ink #05090d</h2>
+        <span class="spec">same artwork, ink ground · paper R reads ≈16:1 on both grounds</span>
+      </div>
+      <div class="row-items">
+        <figure class="proof">
+          <div class="icon ink" style="--s:512px" data-od-id="ink-icon-512" role="img"
+               aria-label="App icon 512 pixels: serif R on ink background with ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">512</span><span class="use">store master</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon ink" style="--s:96px" data-od-id="ink-icon-96" role="img"
+               aria-label="App icon 96 pixels: serif R on ink background with ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">96</span><span class="use">launcher</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon ink" style="--s:48px" data-od-id="ink-icon-48" role="img"
+               aria-label="App icon 48 pixels: serif R on ink background with ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">48</span><span class="use">notification</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 03 — emerald accent variant -->
+    <section class="panel" data-od-id="row-accent"
+             aria-label="Variant three: emerald accent icon with one thin underline hairline, shown at 512, 96 and 48 pixels.">
+      <div class="panel-label">
+        <h2><span class="num">03</span>Emerald Accent Variant</h2>
+        <span class="spec">one allowed accent: thin emerald underline hairline · nothing else</span>
+      </div>
+      <div class="row-items">
+        <figure class="proof">
+          <div class="icon ink accent" style="--s:512px" data-od-id="accent-icon-512" role="img"
+               aria-label="App icon 512 pixels: serif R with emerald underline hairline on ink, ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+            <span class="hairline" aria-hidden="true"></span>
+          </div>
+          <figcaption><span class="px">512</span><span class="use">store master</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon ink accent" style="--s:96px" data-od-id="accent-icon-96" role="img"
+               aria-label="App icon 96 pixels: serif R with emerald underline hairline on ink, ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+            <span class="hairline" aria-hidden="true"></span>
+          </div>
+          <figcaption><span class="px">96</span><span class="use">launcher</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon ink accent" style="--s:48px" data-od-id="accent-icon-48" role="img"
+               aria-label="App icon 48 pixels: serif R with emerald underline hairline on ink, ticker watermark">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+            <span class="hairline" aria-hidden="true"></span>
+          </div>
+          <figcaption><span class="px">48</span><span class="use">notification</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 04 — 48px thin-stem check -->
+    <section class="panel" data-od-id="row-compensation"
+             aria-label="48 pixel legibility check: stock Times rendering versus stroke-compensated rendering.">
+      <div class="panel-label">
+        <h2><span class="num">04</span>48 px · Thin-Stem Check</h2>
+        <span class="spec">stroke compensation: +0.3 px paper stroke on the R</span>
+      </div>
+      <p class="ab-note">Times hairline serifs can pixel-thin at notification size. The compensated twin below adds a
+        subtle stroke so the R keeps its weight on dark grounds — same artwork, one extra attribute.</p>
+      <div class="row-items">
+        <figure class="proof">
+          <div class="icon" style="--s:48px" data-od-id="ab-stock-48" role="img"
+               aria-label="48 pixel icon, stock Times rendering without compensation">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">48</span><span class="use">stock Times</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon comp" style="--s:48px" data-od-id="ab-comp-48" role="img"
+               aria-label="48 pixel icon, stroke-compensated rendering">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">48</span><span class="use">+stroke 0.3px</span></figcaption>
+        </figure>
+        <figure class="proof">
+          <div class="icon comp" style="--s:96px" data-od-id="ab-comp-96" role="img"
+               aria-label="96 pixel icon, stroke-compensated rendering for comparison">
+            <svg class="ticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+              <path d="M8 86 L26 74 L40 78 L58 54 L74 42 L88 24" fill="none" stroke="#3add9e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+              <circle cx="88" cy="24" r="5.5" fill="#3add9e" opacity=".16"/>
+              <circle cx="88" cy="24" r="2.4" fill="#3add9e" opacity=".28"/>
+            </svg>
+            <span class="mark" aria-hidden="true">R</span>
+          </div>
+          <figcaption><span class="px">96</span><span class="use">+stroke reference</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- master svg -->
+    <section class="panel" data-od-id="master-svg-panel"
+             aria-label="Master SVG candidate: the same design as a single scalable inline SVG, R as text, ticker as path.">
+      <div class="panel-label">
+        <h2><span class="num">05</span>Scalable Source</h2>
+        <span class="spec">viewBox 0 0 512 512 · flat fills only · rasterizes 512 → 48</span>
+      </div>
+      <div class="master-grid">
+        <div class="master-frame">
+          <span class="master-tag">MASTER-SVG-CANDIDATE</span>
+          <svg class="master-svg" data-od-id="master-svg-candidate" viewBox="0 0 512 512"
+               role="img" aria-label="Master SVG candidate: serif capital R with ascending ticker watermark and emerald hairline on ink background">
+            <rect width="512" height="512" fill="#05090d"/>
+            <path d="M41 440 L133 379 L205 399 L297 276 L379 215 L451 123"
+                  fill="none" stroke="#3add9e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity=".09"/>
+            <circle cx="451" cy="123" r="28" fill="#3add9e" opacity=".16"/>
+            <circle cx="451" cy="123" r="12" fill="#3add9e" opacity=".28"/>
+            <text x="256" y="387" text-anchor="middle"
+                  font-family="'Times New Roman', 'Liberation Serif', Georgia, serif"
+                  font-size="389" fill="#e7ecf0">R</text>
+            <rect x="154" y="409" width="205" height="3" rx="1.5" fill="#3add9e"/>
+          </svg>
+          <span class="master-caption">&lt;text&gt; R · &lt;path&gt; ticker · &lt;rect&gt; hairline</span>
+        </div>
+        <ul class="spec-list" aria-label="Master SVG construction notes">
+          <li><span class="k">The mark</span><span class="v">Serif capital <code>&lt;text&gt;R&lt;/text&gt;</code> — font stack <code>'Times New Roman', 'Liberation Serif', Georgia, serif</code>, size 0.76× the canvas, cap-height optically centered.</span></li>
+          <li><span class="k">Watermark</span><span class="v">Ascending ticker <code>&lt;path&gt;</code> — six-point polyline, bottom-left → top-right, round joins, endpoint glow dot (two circles). Drawable as-is.</span></li>
+          <li><span class="k">Opacity</span><span class="v">Line 9%, glow ring 16%, endpoint dot 28% — watermark layer, never a cartoon arrow.</span></li>
+          <li><span class="k">Accent</span><span class="v">One emerald hairline, 0.40× wide, 3px at 512. Drop the <code>&lt;rect&gt;</code> for the base variant. No compass, coins, wallet, or gradients.</span></li>
+          <li><span class="k">Rasters clean</span><span class="v">Flat fills only — every element scales with the viewBox, so 512, 96, and 48 exports come from this one source.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- palette + legibility -->
+    <section class="panel" data-od-id="palette-notes-panel"
+             aria-label="Brand palette strip and 48 pixel legibility notes.">
+      <div class="panel-label">
+        <h2><span class="num">06</span>Palette &amp; 48 px Notes</h2>
+        <span class="spec">three colors, zero gradients</span>
+      </div>
+      <div class="split">
+        <div class="palette" role="list" aria-label="Brand palette">
+          <div class="swatch" role="listitem" data-od-id="swatch-ink">
+            <span class="chip" style="background:#05090d"></span>
+            <span class="meta"><span class="hex">#05090d</span><span class="role">Ink — icon ground (hero twin on true #000000)</span></span>
+          </div>
+          <div class="swatch" role="listitem" data-od-id="swatch-emerald">
+            <span class="chip" style="background:#3add9e"></span>
+            <span class="meta"><span class="hex">#3add9e</span><span class="role">Emerald — ticker watermark + hairline, the only accent</span></span>
+          </div>
+          <div class="swatch" role="listitem" data-od-id="swatch-paper">
+            <span class="chip" style="background:#e7ecf0"></span>
+            <span class="meta"><span class="hex">#e7ecf0</span><span class="role">Paper — the R itself</span></span>
+          </div>
+        </div>
+        <ol class="notes" aria-label="Legibility notes at 48 pixels">
+          <li data-od-id="note-contrast"><b>The R holds at 48 px.</b> Paper on both grounds stays far above the 4.5:1 floor
+            (≈16:1 on <span class="mono">#05090d</span>, marginally higher on <span class="mono">#000000</span>).</li>
+          <li data-od-id="note-watermark"><b>Watermark behaves as texture.</b> At 48 px the ticker line lands near 1px —
+            keep 9%: below 8% it disappears, above 12% it starts competing with the R.</li>
+          <li data-od-id="note-stroke"><b>Thin stems, compensated.</b> Times hairline serifs can pixel-thin at notification
+            size; ship the <span class="mono">+0.3px stroke</span> export below 64px (row 04, right twin).</li>
+          <li data-od-id="note-hairline"><b>Hairline floors at 1px.</b> The emerald underline is 0.006× of the canvas with a
+            1px minimum — under 32px, drop it rather than let it flicker.</li>
+          <li data-od-id="note-no-smears"><b>No effects at 48.</b> No gradients, blurs, or extra glyphs — flat fills only, so the
+            tiny export stays identical in character to the 512 master.</li>
+        </ol>
+      </div>
+    </section>
+
+    <p class="board-foot" data-od-id="brand-logo-footer">RAHNUMA SABRE · APP ICON SYSTEM v1 · SERIF R + TICKER WATERMARK</p>
+  </div>
+</body>
+</html>
