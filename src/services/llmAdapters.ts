@@ -33,7 +33,13 @@ export function buildRequest(
           role: m.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: m.content }],
         })),
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.4 },
+        // Gemini 3.x bills thinking tokens against maxOutputTokens; leaving it on
+        // truncates multi-block answers to MAX_TOKENS mid-sentence.
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.4,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       },
     };
   }
