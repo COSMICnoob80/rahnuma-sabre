@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 interface EmptyStateProps {
   message: string;
@@ -30,11 +31,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 15,
     textAlign: 'center',
+    fontFamily: fonts.regular,
   },
   hint: {
     color: colors.textMuted,
     fontSize: 13,
     textAlign: 'center',
     marginTop: spacing.sm,
+    fontFamily: fonts.regular,
   },
 });

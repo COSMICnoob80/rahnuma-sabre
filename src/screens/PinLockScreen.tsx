@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { hasPin, setPin, verifyPin, lockoutRemainingMs, attemptsLeft } from '../utils/pinLock';
+import { authenticate, canUseBiometric } from '../utils/biometric';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 import { Card, Button, Input } from '../components';
 
 const MONO_FONT = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+const MAX_BIOMETRIC_FAILS = 3;
 
 export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [mode, setMode] = useState<'create' | 'enter'>('enter');
   const [pin, setPinVal] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [message, setMessage] = useState('');
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricFails, setBiometricFails] = useState(0);
+  const [biometricBusy, setBiometricBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
       const exists = await hasPin();
-      if (!exists) setMode('create');
+      if (!exists) {
+        setMode('create');
+        return;
+      }
+      setBiometricAvailable(await canUseBiometric());
     })();
   }, []);
 
@@ -56,6 +66,28 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
     onUnlock();
   };
 
+  const handleBiometric = async () => {
+    if (biometricBusy) return;
+    setBiometricBusy(true);
+    setMessage('');
+    const unlocked = await authenticate('Unlock Rahnuma SABRE');
+    setBiometricBusy(false);
+
+    if (unlocked) {
+      onUnlock();
+      return;
+    }
+
+    const fails = biometricFails + 1;
+    setBiometricFails(fails);
+    if (fails >= MAX_BIOMETRIC_FAILS) {
+      setBiometricAvailable(false);
+      setMessage('Fingerprint not recognized. Enter your PIN.');
+      return;
+    }
+    setMessage('Fingerprint not recognized. Try again or enter your PIN.');
+  };
+
   return (
     <View style={styles.container}>
       {Platform.OS === 'web' && (
@@ -86,6 +118,15 @@ export default function PinLockScreen({ onUnlock }: { onUnlock: () => void }) {
             />
             {!!message && <Text style={styles.message}>{message}</Text>}
             <Button label="Unlock" onPress={handleEnter} style={styles.button} />
+            {biometricAvailable && (
+              <Button
+                label="Unlock with fingerprint"
+                onPress={handleBiometric}
+                variant="secondary"
+                disabled={biometricBusy}
+                style={styles.fingerprintButton}
+              />
+            )}
           </>
         ) : (
           <>
@@ -142,17 +183,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
+    fontFamily: fonts.regular,
   },
   brand: {
     color: colors.textMuted,
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 4,
   },
   wordmark: {
     color: colors.textPrimary,
     fontSize: 30,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 8,
     marginTop: spacing.sm,
   },
@@ -170,7 +212,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: spacing.sm,
@@ -189,6 +231,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
     marginTop: spacing.sm,
+    fontFamily: fonts.regular,
   },
   button: { marginTop: spacing.md },
+  fingerprintButton: { marginTop: spacing.sm },
 });

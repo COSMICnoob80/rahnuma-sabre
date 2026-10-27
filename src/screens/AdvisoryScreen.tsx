@@ -19,6 +19,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { Chip } from '../components';
 import { EMBEDDED_KEY_CHIP_LABEL, getEmbeddedGroqKey } from '../services/advisoryKey';
+import { fonts } from '../utils/fonts';
 
 const GREETING =
   "Assalam-o-Alaikum! I'm Rahnuma, your financial advisor. Ask me about your portfolio, FIRE planning, taxes, or any financial question.";
@@ -287,6 +288,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     lineHeight: 15,
+    fontFamily: fonts.regular,
   },
   embeddedChipRow: {
     paddingHorizontal: spacing.lg,
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
   personaBadge: {
     color: colors.textMuted,
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: spacing.xs,
@@ -323,7 +325,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 6,
   },
-  bubbleText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
+  bubbleText: { color: colors.textPrimary, fontSize: 15, lineHeight: 22, fontFamily: fonts.regular },
   userBubbleText: { color: colors.textPrimary },
   messageNote: {
     color: colors.textMuted,
@@ -331,9 +333,10 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginTop: spacing.xs,
     marginLeft: spacing.xs,
+    fontFamily: fonts.regular,
   },
   typing: { paddingHorizontal: spacing.lg, marginBottom: spacing.xs },
-  typingText: { color: colors.textSecondary, fontSize: 12, fontStyle: 'italic' },
+  typingText: { color: colors.textSecondary, fontSize: 12, fontStyle: 'italic', fontFamily: fonts.regular },
   inputBar: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
@@ -358,6 +361,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.sm,
+    fontFamily: fonts.regular,
   },
   sendBtn: {
     backgroundColor: colors.accent,
@@ -366,7 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginLeft: spacing.sm,
   },
-  sendBtnText: { color: colors.onAccent, fontWeight: '700', fontSize: 14 },
+  sendBtnText: { color: colors.onAccent, fontFamily: fonts.bold, fontSize: 14 },
   disclaimer: {
     color: colors.textMuted,
     backgroundColor: colors.surfaceAlt,
@@ -377,11 +381,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+    fontFamily: fonts.regular,
   },
   emptyTitle: {
     color: colors.textPrimary,
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     marginBottom: spacing.md,
   },
   emptyText: {
@@ -390,5 +395,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.sm,
+    fontFamily: fonts.regular,
   },
 });

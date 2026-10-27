@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Card, Button, Chip, LoadingState } from '../components';
+import { fonts } from '../utils/fonts';
 
 type BriefingOutput = ReturnType<typeof computeBriefing>;
 
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     marginBottom: spacing.md,
   },
-  alertText: { color: colors.white, fontSize: 17, fontWeight: '700', lineHeight: 23 },
+  alertText: { color: colors.white, fontSize: 17, fontFamily: fonts.bold, lineHeight: 23 },
   quoteRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -254,10 +255,10 @@ const styles = StyleSheet.create({
   quoteTicker: {
     color: colors.white,
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     letterSpacing: 1,
   },
-  quotePrice: { color: colors.white, fontSize: 26, fontWeight: '700', marginTop: 2 },
+  quotePrice: { color: colors.white, fontSize: 26, fontFamily: fonts.bold, marginTop: 2 },
 
   statRow: {
     flexDirection: 'row',
@@ -265,10 +266,10 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginTop: spacing.md,
   },
-  statValue: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  statValue: { color: colors.textPrimary, fontSize: 18, fontFamily: fonts.bold },
   hint: { ...typography.small, marginTop: spacing.sm },
   statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg },
-  check: { fontSize: 15, fontWeight: '700', marginRight: spacing.sm },
+  check: { fontSize: 15, fontFamily: fonts.bold, marginRight: spacing.sm },
 
   mechRow: {
     flexDirection: 'row',
@@ -305,5 +306,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     textAlign: 'center',
     marginBottom: spacing.md,
+    fontFamily: fonts.regular,
   },
 });

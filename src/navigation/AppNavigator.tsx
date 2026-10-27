@@ -15,6 +15,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import { View, StyleSheet, StatusBar } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -94,7 +95,7 @@ function TabsNavigator() {
         tabBarLabelStyle: styles.tabLabel,
         headerStyle: { backgroundColor: colors.surfaceAlt },
         headerTintColor: colors.textPrimary,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontFamily: fonts.bold },
         headerShadowVisible: false,
       })}
     >
@@ -117,7 +118,7 @@ export default function AppNavigator() {
           screenOptions={{
             headerStyle: { backgroundColor: colors.surfaceAlt },
             headerTintColor: colors.textPrimary,
-            headerTitleStyle: { fontWeight: '600' },
+            headerTitleStyle: { fontFamily: fonts.bold },
             headerShadowVisible: false,
             contentStyle: { backgroundColor: colors.background },
           }}
@@ -146,6 +147,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: spacing.sm,
   },
-  tabLabel: { fontSize: 10, fontWeight: '600', marginBottom: 4 },
+  tabLabel: { fontSize: 10, fontFamily: fonts.bold, marginBottom: 4 },
   tabIcon: { alignItems: 'center', justifyContent: 'center' },
 });

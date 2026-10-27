@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { useFocusEffect } from '@react-navigation/native';
 import { getSetting, setSetting, addAsset } from '../database/db';
 import { PROVIDERS, ProviderId } from '../services/providers';
@@ -17,9 +19,34 @@ import {
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { Card, Button, Input, Chip } from '../components';
+import { fonts } from '../utils/fonts';
 
 type KeysState = Record<string, { input: string; saved: boolean }>;
 type ModelsState = Record<string, string>;
+
+const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
+
+function looksBinary(text: string): boolean {
+  if (text.includes('\u0000')) return true;
+  const sample = text.slice(0, 4000);
+  let control = 0;
+  for (let index = 0; index < sample.length; index += 1) {
+    const code = sample.charCodeAt(index);
+    if (code < 32 && code !== 9 && code !== 10 && code !== 13) control += 1;
+  }
+  return control / sample.length > 0.05;
+}
+
+async function readPickedText(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {
+  if (asset.size !== undefined && asset.size > MAX_IMPORT_BYTES) {
+    throw new Error(`That file is ${(asset.size / (1024 * 1024)).toFixed(1)} MB. Pick a text export under 4 MB.`);
+  }
+
+  const text = asset.file ? await asset.file.text() : await new File(asset.uri).text();
+  if (!text.trim()) throw new Error('That file is empty.');
+  if (looksBinary(text)) throw new Error('That looks like a binary file. Pick the CSV or text export, not the PDF or the spreadsheet.');
+  return text;
+}
 
 export default function SettingsScreen() {
   const [cashAmount, setCashAmount] = useState('');
@@ -33,6 +60,7 @@ export default function SettingsScreen() {
   const [importText, setImportText] = useState('');
   const [importFormat, setImportFormat] = useState<'bank' | 'fbr'>('bank');
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const [pickBusy, setPickBusy] = useState(false);
 
   const load = useCallback(async () => {
     const c = await getSetting('cash');
@@ -107,6 +135,37 @@ export default function SettingsScreen() {
     setImportReport(report);
     if (report.rows.length === 0 && report.rejected.length === 0) {
       Alert.alert('Nothing to parse', 'Paste statement lines above first.');
+    }
+  };
+
+  const handlePickFile = async () => {
+    if (pickBusy) return;
+    setPickBusy(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/*', 'text/csv', 'application/csv'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      const text = await readPickedText(asset);
+      const report = importFormat === 'bank' ? parseBankCsvReport(text) : parseFbrWealthLinesReport(text);
+
+      setImportText(text);
+      setImportReport(report);
+      Alert.alert(
+        'File loaded',
+        `${asset.name} — ${report.rows.length} row(s) parsed, ${report.rejected.length} rejected. Review below, then import.`
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not read that file',
+        error instanceof Error ? error.message : 'Pick a plain-text CSV or .txt export.'
+      );
+    } finally {
+      setPickBusy(false);
     }
   };
 
@@ -290,6 +349,16 @@ export default function SettingsScreen() {
           />
         </View>
 
+        <Button
+          label={pickBusy ? 'Reading file…' : 'Choose file'}
+          onPress={handlePickFile}
+          variant="secondary"
+          size="sm"
+          disabled={pickBusy}
+          style={styles.pickButton}
+        />
+        <Text style={styles.hint}>CSV or plain text, read on this device. Up to 4 MB.</Text>
+
         <Input
           placeholder={
             importFormat === 'bank'
@@ -340,7 +409,7 @@ export default function SettingsScreen() {
         )}
 
         <Text style={styles.deferNote}>
-          File picker and OCR are not in this version — paste the text yourself. Bank CSV rows are recorded as net movements and added to your saved cash; FBR rows are balance snapshots and replace it.
+          Files are read on this device and never uploaded. CSV or plain text only — PDFs and photos are not read. Bank CSV rows are recorded as net movements and added to your saved cash; FBR rows are balance snapshots and replace it.
         </Text>
       </Card>
 
@@ -379,6 +448,9 @@ export default function SettingsScreen() {
       <Card compact>
         <Text style={styles.sectionTitle}>Data</Text>
         <Button label="Export All Data (JSON)" onPress={exportAllData} variant="secondary" />
+        <Text style={styles.privacyNote}>
+          All data stays on this device. Rahnuma has no server and uploads nothing — the database sits in the app's private storage, protected by your phone's own device encryption while its lock screen is on.
+        </Text>
       </Card>
 
       <Card compact>
@@ -400,7 +472,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.textPrimary,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     letterSpacing: -0.1,
     marginBottom: spacing.md,
   },
@@ -413,7 +485,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     marginBottom: spacing.xs,
     marginTop: spacing.xs,
   },
@@ -422,6 +494,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: spacing.sm,
     lineHeight: 16,
+    fontFamily: fonts.regular,
   },
   row: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: spacing.sm },
   rowField: { flex: 1, marginRight: spacing.sm },
@@ -432,19 +505,21 @@ const styles = StyleSheet.create({
   stackButton: { marginTop: spacing.sm },
   importModeRow: { flexDirection: 'row', marginBottom: spacing.sm },
   pasteInput: { minHeight: 96, textAlignVertical: 'top' },
+  pickButton: { marginBottom: spacing.sm },
+  privacyNote: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: spacing.sm, fontFamily: fonts.regular },
   previewBlock: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
   },
-  previewLine: { color: colors.textPrimary, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm },
+  previewLine: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bold, marginBottom: spacing.sm },
   previewRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
   sourceChip: { marginRight: spacing.sm },
-  previewRowText: { color: colors.textSecondary, fontSize: 12, flex: 1 },
-  rejectedText: { color: colors.danger, fontSize: 11, lineHeight: 15, marginTop: spacing.xs },
-  deferNote: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: spacing.sm },
-  aboutText: { color: colors.textSecondary, fontSize: 13, marginBottom: spacing.xs },
+  previewRowText: { color: colors.textSecondary, fontSize: 12, flex: 1, fontFamily: fonts.regular },
+  rejectedText: { color: colors.danger, fontSize: 11, lineHeight: 15, marginTop: spacing.xs, fontFamily: fonts.regular },
+  deferNote: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: spacing.sm, fontFamily: fonts.regular },
+  aboutText: { color: colors.textSecondary, fontSize: 13, marginBottom: spacing.xs, fontFamily: fonts.regular },
   disclaimer: {
     color: colors.textMuted,
     fontSize: 11,
@@ -452,5 +527,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     textAlign: 'center',
     fontStyle: 'italic',
+    fontFamily: fonts.regular,
   },
 });

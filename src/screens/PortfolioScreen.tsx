@@ -11,6 +11,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Card, Button, Input, EmptyState, LoadingState } from '../components';
+import { fonts } from '../utils/fonts';
 
 const SECTOR_MAP: Record<string, string> = {
   LUCK: 'Cement', OGDC: 'OGMC', HBL: 'Bank', MEBL: 'Bank', UBL: 'Bank',
@@ -211,9 +212,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     alignSelf: 'stretch',
   },
-  addBtn: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  addBtn: { color: colors.accent, fontSize: 15, fontFamily: fonts.bold },
   addForm: { marginBottom: spacing.lg },
-  freshnessLabel: { color: colors.success, fontSize: 10, marginTop: 3 },
+  freshnessLabel: { color: colors.success, fontSize: 10, marginTop: 3, fontFamily: fonts.regular },
   freshnessStale: { color: colors.warning },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   holdingItem: {

@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 interface LoadingStateProps {
   label?: string;
@@ -30,5 +31,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: spacing.md,
+    fontFamily: fonts.regular,
   },
 });

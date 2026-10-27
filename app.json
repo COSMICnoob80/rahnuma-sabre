@@ -30,7 +30,14 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Rahnuma SABRE to use Face ID to unlock your on-device ledger."
+        }
+      ]
     ],
     "extra": {
       "eas": {

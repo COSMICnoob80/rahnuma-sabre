@@ -14,6 +14,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Card, Button, Input, Chip, EmptyState, LoadingState } from '../components';
+import { fonts } from '../utils/fonts';
 
 const CATEGORIES = ['rent', 'food', 'transport', 'medical', 'misc', 'utilities', 'entertainment', 'education'];
 
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   summaryCard: { marginTop: spacing.sm },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
   summaryItem: { alignItems: 'center' },
-  summaryValue: { fontSize: 20, fontWeight: '700', marginTop: 4 },
+  summaryValue: { fontSize: 20, fontFamily: fonts.bold, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center' },
   listItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

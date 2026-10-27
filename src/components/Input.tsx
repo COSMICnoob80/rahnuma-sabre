@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, StyleProp, TextStyle, TextInputProps } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -57,6 +58,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     fontSize: 15,
+    fontFamily: fonts.regular,
   },
   inputFocused: {
     borderColor: colors.accent,

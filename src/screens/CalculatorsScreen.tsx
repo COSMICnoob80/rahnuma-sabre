@@ -8,6 +8,7 @@ import {
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { Card, Button, Chip, Input } from '../components';
+import { fonts } from '../utils/fonts';
 
 function CalculatorCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.textPrimary,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
     letterSpacing: -0.1,
     marginBottom: spacing.md,
   },
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: spacing.md,
     lineHeight: 17,
+    fontFamily: fonts.regular,
   },
   trancheRow: { flexDirection: 'row', flexWrap: 'wrap' },
   trancheChip: { marginBottom: spacing.sm },
@@ -262,14 +264,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: spacing.xs,
     fontVariant: ['tabular-nums'],
+    fontFamily: fonts.regular,
   },
-  resultPositive: { color: colors.success, fontWeight: '700' },
-  resultNegative: { color: colors.danger, fontWeight: '700' },
-  resultAccent: { color: colors.accent, fontWeight: '700' },
+  resultPositive: { color: colors.success, fontFamily: fonts.bold },
+  resultNegative: { color: colors.danger, fontFamily: fonts.bold },
+  resultAccent: { color: colors.accent, fontFamily: fonts.bold },
   resultSub: {
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: spacing.xs,
     lineHeight: 16,
+    fontFamily: fonts.regular,
   },
 });

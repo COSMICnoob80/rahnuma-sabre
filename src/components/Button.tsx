@@ -6,6 +6,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 interface ButtonProps {
   label: string;
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
   },
   labelSmall: {
     fontSize: 13,

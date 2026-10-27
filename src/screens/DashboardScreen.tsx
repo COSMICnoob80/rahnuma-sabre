@@ -10,6 +10,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Card, Button, LoadingState } from '../components';
+import { fonts } from '../utils/fonts';
 
 export default function DashboardScreen() {
   const navigation = useNavigation<any>();
@@ -161,7 +162,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
-  date: { color: colors.textMuted, fontSize: 14, marginBottom: spacing.lg, marginTop: spacing.sm },
+  date: { color: colors.textMuted, fontSize: 14, marginBottom: spacing.lg, marginTop: spacing.sm, fontFamily: fonts.regular },
   entryRow: { flexDirection: 'row', marginBottom: spacing.lg },
   entryBtn: { flex: 1, paddingHorizontal: spacing.md },
   entryBtnSpaced: { marginLeft: spacing.sm },

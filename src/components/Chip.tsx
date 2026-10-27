@@ -6,6 +6,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
+import { fonts } from '../utils/fonts';
 
 interface ChipProps {
   label: string;
@@ -59,13 +60,13 @@ const styles = StyleSheet.create({
   text: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
   },
   textDanger: {
     color: colors.dangerInk,
   },
   textActive: {
     color: colors.accent,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
   },
 });
