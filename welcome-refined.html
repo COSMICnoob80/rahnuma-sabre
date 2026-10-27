@@ -67,8 +67,9 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#e0e0e0;display:fle
 <script>
 function go(screen){
   for(var i=1;i<=3;i++){
-    document.getElementById('screen'+i).classList.toggle('active');
+    document.getElementById('screen'+i).classList.remove('active');
   }
+  document.getElementById('screen'+screen).classList.add('active');
   if(screen===3){
     const g=document.getElementById('pinGrid');
     for(let i=0;i<4;i++){
