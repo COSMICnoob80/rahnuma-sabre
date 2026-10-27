@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375,initial-scale=1">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh}
+.screen{display:none;flex-direction:column;align-items:center;padding:24px;gap:24px;width:100%;max-width:375px}
+.screen.active{display:flex}
+.logo{font-size:48px;font-family:'Noto Nastaliq',sans-serif;text-align:center}
+.title{font-size:28px;font-weight:700;font-family:'Inter',sans-serif}
+.subline{font-size:14px;color:#a0a0a0;text-align:center;max-width:240px;margin:0 auto}
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.chip{background:#1e1e1e;color:#4ade80;padding:4px 8px;border-radius:4px;font-size:11px}
+.btn{width:100%;max-width:280px;padding:14px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer}
+.btn:hover{background:#059669}
+.security-card{width:100%;max-width:280px;background:#1e1e1e;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.security-option{display:flex;align-items:center;gap:12px;cursor:pointer}
+.security-option:hover{opacity:0.8}
+.icon{font-size:24px}
+.pin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;max-width:280px}
+.pin-box{width:44px;height:44px;border:1px solid #333;border-radius:8px;background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:600}
+.footer{font-size:12px;color:#6b7280;text-align:center;margin-top:16px}
+.contract{font-size:11px;color:#4b5563;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="screen active" id="screen1">
+  <div class="logo">رہنما</div>
+  <div class="title">Rahnuma Sabre</div>
+  <div class="subline">Paise ka aayna — a private mirror of your money</div>
+  <div class="chips">
+    <span class="chip">[On-device]</span>
+    <span class="chip">[Never tells you]</span>
+    <span class="chip">[Urdu-first]</span>
+  </div>
+  <button class="btn" onclick="go(2)">Set up my app</button>
+  <div class="contract">Information only · Not investment advice</div>
+</div>
+
+<div class="screen" id="screen2">
+  <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">How to unlock</h2>
+  <div class="security-card">
+    <div class="security-option" onclick="alert('biometric available')">
+      <span class="icon">✓</span>
+      <span><b>Use fingerprint</b><br><small style="color:#a0a0a0">fastest unlock</small></span>
+    </div>
+    <div class="security-option" onclick="go(3)">
+      <span class="icon">4</span>
+      <span><b>Use a 4-digit PIN</b><br><small style="color:#a0a0a0">works without sensor</small></span>
+    </div>
+  </div>
+  <p class="footer">Your data never leaves this phone. Encrypted by the device.</p>
+  <button class="btn" style="margin-top:16px" onclick="go(1)">Back</button>
+</div>
+
+<div class="screen" id="screen3">
+  <h2 style="font-size:20px;font-weight:600;margin-bottom:12px">Confirm PIN</h2>
+  <div class="pin-grid" id="pinGrid"></div>
+  <button class="btn" onclick="setupComplete()" style="margin-top:24px">Confirm</button>
+  <p class="footer">You can add biometrics later in Settings</p>
+  <button class="btn" style="margin-top:12px;background:#4a5568" onclick="go(2)">Back</button>
+</div>
+
+<script>
+function go(screen){
+  for(var i=1;i<=3;i++){
+    document.getElementById('screen'+i).classList.toggle('active');
+  }
+  if(screen===3){
+    const g=document.getElementById('pinGrid');
+    for(let i=0;i<4;i++){
+      const b=document.createElement('div');
+      b.className='pin-box';
+      b.textContent='•';
+      g.appendChild(b);
+    }
+  }
+}
+function setupComplete(){
+  alert('Setup complete! Welcome to Rahnuma Sabre.');
+}
+</script>
+</body>
+</html>
