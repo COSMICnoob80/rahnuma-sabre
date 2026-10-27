@@ -73,12 +73,20 @@ export function parseResponse(providerId: ProviderId, data: unknown): string | n
   }
 
   if (providerId === 'gemini') {
-    const parts = payload.candidates?.[0]?.content?.parts;
+    const blockReason = payload.promptFeedback?.blockReason;
+    if (blockReason) {
+      throw new Error(`gemini declined this request (${blockReason})`);
+    }
+    const candidate = payload.candidates?.[0];
+    const parts = candidate?.content?.parts;
     if (Array.isArray(parts)) {
       const text = parts.map((p: any) => p?.text ?? '').join('').trim();
-      return text || null;
+      if (text) return text;
     }
-    return null;
+    // A 200 with no text is a refusal or a truncated candidate; surfacing the
+    // reason lets the caller fall through instead of reporting "Empty response".
+    const finishReason = candidate?.finishReason;
+    throw new Error(`gemini returned no text${finishReason ? ` (${finishReason})` : ''}`);
   }
 
   const content = payload.choices?.[0]?.message?.content;

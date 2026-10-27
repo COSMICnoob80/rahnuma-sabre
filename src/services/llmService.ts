@@ -20,6 +20,9 @@ export interface AskOptions {
   messages: ChatMessage[];
   preferredProvider?: ProviderId;
   useCache?: boolean;
+  // Per-call ceiling for one provider attempt. A provider that accepts the
+  // connection and then stalls would otherwise hold the whole chain.
+  timeoutMs?: number;
 }
 
 export interface AskResult {
@@ -69,11 +72,12 @@ async function callProvider(
   model: string,
   apiKey: string,
   systemPrompt: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  timeoutMs: number = REQUEST_TIMEOUT_MS
 ): Promise<string> {
   const request = buildRequest(provider, model, apiKey, systemPrompt, messages);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(request.url, {
@@ -125,7 +129,14 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
 
   for (const provider of ordered) {
     try {
-      const text = await callProvider(provider.id, provider.model, provider.key, systemPrompt, messages);
+      const text = await callProvider(
+        provider.id,
+        provider.model,
+        provider.key,
+        systemPrompt,
+        messages,
+        options.timeoutMs
+      );
       if (useCache) await writeCache(cacheKey(systemPrompt, messages), text, provider.id);
       return { text, provider: provider.id, cached: false, failedProviders };
     } catch (error) {

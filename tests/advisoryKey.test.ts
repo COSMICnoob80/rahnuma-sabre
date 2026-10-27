@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   EMBEDDED_KEY_CHIP_LABEL,
   embeddedKeyChipLabel,
+  getEmbeddedKey,
+  resolveEmbeddedGeminiKey,
   resolveEmbeddedGroqKey,
 } from '../src/services/advisoryKey.ts';
 
@@ -30,4 +32,37 @@ test('advisory key: the Constants extra wins over the env fallback', () => {
     resolveEmbeddedGroqKey({ embeddedGroqKey: 'from-constants' }, 'from-env'),
     'from-constants'
   );
+});
+
+test('advisory key: the Gemini key resolves through the same pure path', () => {
+  assert.equal(resolveEmbeddedGeminiKey(null, ''), null);
+  assert.equal(resolveEmbeddedGeminiKey({}, '   '), null);
+  assert.equal(
+    resolveEmbeddedGeminiKey({ embeddedGeminiKey: 'test-gemini-value-never-real' }, null),
+    'test-gemini-value-never-real'
+  );
+  assert.equal(resolveEmbeddedGeminiKey({}, 'env-gemini-value'), 'env-gemini-value');
+  assert.equal(
+    resolveEmbeddedGeminiKey({ embeddedGeminiKey: 'from-constants' }, 'from-env'),
+    'from-constants'
+  );
+});
+
+test('advisory key: the Gemini extra does not leak into the Groq resolver', () => {
+  assert.equal(resolveEmbeddedGroqKey({ embeddedGeminiKey: 'gemini-only' }, null), null);
+  assert.equal(resolveEmbeddedGeminiKey({ embeddedGroqKey: 'groq-only' }, null), null);
+});
+
+test('advisory key: getEmbeddedKey dispatches per provider and ignores providers without one', () => {
+  const original = { ...process.env };
+  try {
+    process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'inlined-gemini-value';
+    process.env.EXPO_PUBLIC_GROQ_API_KEY = 'inlined-groq-value';
+
+    assert.equal(getEmbeddedKey('gemini'), 'inlined-gemini-value');
+    assert.equal(getEmbeddedKey('groq'), 'inlined-groq-value');
+    assert.equal(getEmbeddedKey('openrouter'), null);
+  } finally {
+    process.env = original;
+  }
 });

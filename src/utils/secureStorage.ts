@@ -1,6 +1,12 @@
 import { platformStore } from './webStorageAdapter';
-import { ProviderId, PROVIDERS, providerById } from '../services/providers';
-import { getEmbeddedGroqKey } from '../services/advisoryKey';
+import {
+  ConfiguredProvider,
+  ProviderId,
+  PROVIDERS,
+  providerById,
+  withEmbeddedFallback,
+} from '../services/providers';
+import { EMBEDDED_KEY_PROVIDER_IDS, getEmbeddedKey } from '../services/advisoryKey';
 
 const LEGACY_OPENROUTER_KEY = 'openrouter_api_key';
 const LEGACY_OPENROUTER_MODEL = 'openrouter_model';
@@ -42,14 +48,10 @@ export async function setProviderModel(id: ProviderId, model: string): Promise<v
   await platformStore.setItemAsync(modelName(id), model);
 }
 
-export interface ConfiguredProvider {
-  id: ProviderId;
-  key: string;
-  model: string;
-}
-
 // Preference order: paid-quality first, then the free tiers. Callers override
-// with the user's chosen provider, which is tried before this order.
+// with the user's chosen provider, which is tried before this order. Keys the
+// user pasted always come first; the build's own embedded keys are appended as
+// the last resort.
 export async function getConfiguredProviders(): Promise<ConfiguredProvider[]> {
   const configured: ConfiguredProvider[] = [];
   for (const provider of PROVIDERS) {
@@ -59,14 +61,15 @@ export async function getConfiguredProviders(): Promise<ConfiguredProvider[]> {
     }
   }
 
-  if (!configured.some((provider) => provider.id === 'groq')) {
-    const embedded = getEmbeddedGroqKey();
-    if (embedded) {
-      configured.push({ id: 'groq', key: embedded, model: await getProviderModel('groq') });
+  const embedded: ConfiguredProvider[] = [];
+  for (const id of EMBEDDED_KEY_PROVIDER_IDS) {
+    const key = getEmbeddedKey(id);
+    if (key) {
+      embedded.push({ id, key, model: await getProviderModel(id) });
     }
   }
 
-  return configured;
+  return withEmbeddedFallback(configured, embedded);
 }
 
 // Kept for backward compatibility with screens not yet migrated.

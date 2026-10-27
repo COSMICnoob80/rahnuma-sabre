@@ -8,15 +8,18 @@ export interface ProviderConfig {
   models: { label: string; value: string }[];
 }
 
+// Model ids are kept to ones a live call has answered for, or that the founder
+// pinned. Retired ids cost a round trip and a 404 on every fall-through.
 export const PROVIDERS: ProviderConfig[] = [
   {
     id: 'gemini',
     label: 'Google Gemini',
     signupNote: 'Free tier — get a key at aistudio.google.com',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3.8-flash',
     models: [
-      { label: 'Gemini 2.5 Flash (free tier)', value: 'gemini-2.5-flash' },
-      { label: 'Gemini 2.5 Flash Lite (free tier)', value: 'gemini-2.5-flash-lite' },
+      { label: 'Gemini 3.8 Flash', value: 'gemini-3.8-flash' },
+      { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+      { label: 'Gemini 3.1 Flash Lite (fastest)', value: 'gemini-3.1-flash-lite' },
     ],
   },
   {
@@ -53,4 +56,26 @@ export function providerById(id: ProviderId): ProviderConfig {
   const found = PROVIDERS.find((p) => p.id === id);
   if (!found) throw new Error(`Unknown provider: ${id}`);
   return found;
+}
+
+export interface ConfiguredProvider {
+  id: ProviderId;
+  key: string;
+  model: string;
+}
+
+// Pasted keys keep the order they were configured in; a build's own embedded
+// key is the last resort and never displaces a key the user supplied.
+export function withEmbeddedFallback(
+  configured: ConfiguredProvider[],
+  embedded: ConfiguredProvider[]
+): ConfiguredProvider[] {
+  const merged = [...configured];
+  const seen = new Set(configured.map((provider) => provider.id));
+  for (const entry of embedded) {
+    if (!entry.key || seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    merged.push(entry);
+  }
+  return merged;
 }

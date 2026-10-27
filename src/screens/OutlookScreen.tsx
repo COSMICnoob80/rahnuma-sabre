@@ -9,6 +9,14 @@ import {
 import type { InstrumentQuote } from '../services/globalMarkets';
 import { hasAnyProvider } from '../services/llmService';
 import {
+  COUNCIL_LIVE_CHIP,
+  COUNCIL_PERSONAS,
+  COUNCIL_STATIC_CHIP,
+  buildContextSnapshot,
+  requestCouncilNote,
+} from '../services/outlookCouncil';
+import type { CouncilNoteResult } from '../services/outlookCouncil';
+import {
   HORIZON_CHIPS,
   OUTLOOK_CONTRACT,
   OUTLOOK_DATA_FOOTNOTE,
@@ -19,6 +27,7 @@ import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Button, Card, Chip, LoadingState } from '../components';
+import { fonts } from '../utils/fonts';
 
 const MONO_FONT = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
@@ -72,6 +81,8 @@ export default function OutlookScreen() {
   const [quotes, setQuotes] = useState<InstrumentQuote[]>([]);
   const [degraded, setDegraded] = useState<string[]>([]);
   const [hasKey, setHasKey] = useState(false);
+  const [council, setCouncil] = useState<CouncilNoteResult | null>(null);
+  const [councilLoading, setCouncilLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -79,11 +90,26 @@ export default function OutlookScreen() {
     const result = await fetchOutlookQuotes();
     setQuotes(result.quotes);
     setDegraded(result.degraded);
+
+    let keyed = false;
     try {
-      setHasKey(await hasAnyProvider());
+      keyed = await hasAnyProvider();
     } catch {
-      setHasKey(false);
+      keyed = false;
     }
+    setHasKey(keyed);
+
+    if (!keyed) {
+      setCouncil(null);
+      return;
+    }
+
+    // The council reads the snapshot on its own clock so the quotes paint first.
+    setCouncilLoading(true);
+    requestCouncilNote(buildContextSnapshot(result.quotes), COUNCIL_PERSONAS)
+      .then((note) => setCouncil(note))
+      .catch(() => setCouncil(null))
+      .finally(() => setCouncilLoading(false));
   }, []);
 
   useFocusEffect(
@@ -110,6 +136,10 @@ export default function OutlookScreen() {
   const nationalQuotes = quotes.filter((q) => q.region === 'national');
   const internationalQuotes = quotes.filter((q) => q.region === 'international');
   const noteView = councilNotes(hasKey);
+  const liveNotes = council?.notes ?? [];
+  const isLive = liveNotes.length > 0;
+  const renderedNotes = isLive ? liveNotes : noteView.notes;
+  const councilChip = isLive ? COUNCIL_LIVE_CHIP : councilLoading ? 'reading the record' : COUNCIL_STATIC_CHIP;
 
   return (
     <View style={styles.screen}>
@@ -182,12 +212,15 @@ export default function OutlookScreen() {
         </Card>
 
         <Card>
-          <Text style={styles.cardTitle}>
-            What the council notes
-            <Text style={styles.h2Ur}> · شورہ کونسل</Text>
-          </Text>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>
+              What the council notes
+              <Text style={styles.h2Ur}> · شورہ کونسل</Text>
+            </Text>
+            <Chip label={councilChip} />
+          </View>
 
-          {noteView.notes.map((note) => (
+          {renderedNotes.map((note) => (
             <View key={note.by} style={styles.quote}>
               <Text style={styles.qmark}>“</Text>
               <Text style={styles.quoteText}>{note.text}</Text>
@@ -202,6 +235,17 @@ export default function OutlookScreen() {
               </View>
             </View>
           ))}
+
+          {isLive && council?.synthesis ? (
+            <Text style={styles.synthesis}>{council.synthesis}</Text>
+          ) : null}
+
+          {isLive && council ? (
+            <Text style={styles.councilProvider}>
+              {council.disclaimer}
+              {council.provider ? ` · read by ${council.provider}${council.cached ? ' (cached)' : ''}` : ''}
+            </Text>
+          ) : null}
 
           {noteView.placeholder ? (
             <View style={styles.placeholderRow}>
@@ -261,7 +305,7 @@ const styles = StyleSheet.create({
   brand: {
     color: colors.textMuted,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 1.6,
   },
   clock: {
@@ -273,17 +317,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     color: colors.textPrimary,
     fontSize: 25,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: -0.5,
     lineHeight: 32,
   },
-  greetSep: { color: colors.textSecondary, fontWeight: '400' },
-  greetUr: { fontSize: 24, fontWeight: '600' },
+  greetSep: { color: colors.textSecondary, fontFamily: fonts.regular },
+  greetUr: { fontSize: 24, fontFamily: fonts.bold },
   heroSub: {
     marginTop: spacing.sm,
     color: colors.textSecondary,
     fontSize: 12.5,
     lineHeight: 19,
+    fontFamily: fonts.regular,
   },
 
   degradedNote: {
@@ -291,6 +336,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: spacing.md,
+    fontFamily: fonts.regular,
   },
 
   sectionTitle: { ...typography.bodyStrong, marginBottom: spacing.md },
@@ -301,7 +347,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardTitle: { ...typography.bodyStrong, marginBottom: spacing.md },
-  h2Ur: { fontSize: 16, fontWeight: '600' },
+  h2Ur: { fontSize: 16, fontFamily: fonts.bold },
 
   kpiChip: {
     flexDirection: 'row',
@@ -317,7 +363,7 @@ const styles = StyleSheet.create({
   kpiName: {
     color: colors.dangerInk,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 0.8,
     marginRight: spacing.sm,
   },
@@ -339,8 +385,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLeft: { flex: 1, marginRight: spacing.sm },
-  rowLabel: { color: colors.textSecondary, fontSize: 12.5, fontWeight: '600' },
-  rowNote: { color: colors.textMuted, fontSize: 10.5, marginTop: 2 },
+  rowLabel: { color: colors.textSecondary, fontSize: 12.5, fontFamily: fonts.bold },
+  rowNote: { color: colors.textMuted, fontSize: 10.5, marginTop: 2, fontFamily: fonts.regular },
   rowRight: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -358,7 +404,7 @@ const styles = StyleSheet.create({
   rowFresh: { fontFamily: MONO_FONT, fontSize: 10.5 },
 
   caption: { ...typography.small, marginTop: spacing.md, lineHeight: 17 },
-  captionStrong: { color: colors.textPrimary, fontWeight: '600' },
+  captionStrong: { color: colors.textPrimary, fontFamily: fonts.bold },
 
   quote: {
     backgroundColor: colors.surfaceRaised,
@@ -368,8 +414,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  qmark: { color: colors.accent, fontSize: 22, fontWeight: '700', lineHeight: 22 },
-  quoteText: { color: colors.textPrimary, fontSize: 13, lineHeight: 20, marginTop: spacing.xs },
+  qmark: { color: colors.accent, fontSize: 22, fontFamily: fonts.bold, lineHeight: 22 },
+  quoteText: { color: colors.textPrimary, fontSize: 13, lineHeight: 20, marginTop: spacing.xs, fontFamily: fonts.regular },
   byRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   avatar: {
     width: 22,
@@ -382,8 +428,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
-  avatarText: { color: colors.textPrimary, fontSize: 9.5, fontWeight: '700' },
-  qname: { color: colors.textSecondary, fontSize: 11.5, fontWeight: '600', letterSpacing: 0.4 },
+  avatarText: { color: colors.textPrimary, fontSize: 9.5, fontFamily: fonts.bold },
+  qname: { color: colors.textSecondary, fontSize: 11.5, fontFamily: fonts.bold, letterSpacing: 0.4 },
 
   placeholderRow: { marginTop: spacing.sm },
   placeholderText: {
@@ -391,6 +437,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 19,
     marginTop: spacing.sm,
+    fontFamily: fonts.regular,
   },
 
   horizon: {
@@ -402,7 +449,25 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
 
-  footnote: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },
+  synthesis: {
+    color: colors.accent,
+    fontSize: 12.5,
+    lineHeight: 19,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    fontFamily: fonts.regular,
+  },
+  councilProvider: {
+    color: colors.textMuted,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: spacing.sm,
+    fontFamily: fonts.regular,
+  },
+
+  footnote: { color: colors.textSecondary, fontSize: 12, lineHeight: 19, fontFamily: fonts.regular },
 
   contractBar: {
     borderTopWidth: 1,
@@ -418,6 +483,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     textAlign: 'center',
     marginBottom: spacing.md,
+    fontFamily: fonts.regular,
   },
   contractActions: { flexDirection: 'row', justifyContent: 'space-between' },
   contractButton: { flex: 1, marginHorizontal: spacing.xs },
