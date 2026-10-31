@@ -4,7 +4,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from '@react-navigation/native';
 import { getSetting, setSetting, addAsset } from '../database/db';
-import { PROVIDERS, ProviderId } from '../services/providers';
+import { PROVIDERS, ProviderId, providerById } from '../services/providers';
+import { EMBEDDED_KEY_PROVIDER_IDS, getEmbeddedKey } from '../services/advisoryKey';
 import {
   getProviderKey, setProviderKey, getProviderModel, setProviderModel,
 } from '../utils/secureStorage';
@@ -23,8 +24,14 @@ import { fonts } from '../utils/fonts';
 
 type KeysState = Record<string, { input: string; saved: boolean }>;
 type ModelsState = Record<string, string>;
+type CouncilActive = { id: ProviderId; source: 'your key' | 'embedded'; masked: string };
 
 const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
+
+function maskKey(key: string): string {
+  const tail = key.slice(-4);
+  return key.length <= 4 ? '••••' : `••••••••${tail}`;
+}
 
 function looksBinary(text: string): boolean {
   if (text.includes('\u0000')) return true;
@@ -57,6 +64,7 @@ export default function SettingsScreen() {
   const [pinExists, setPinExists] = useState(false);
   const [keys, setKeys] = useState<KeysState>({});
   const [models, setModels] = useState<ModelsState>({});
+  const [councilActive, setCouncilActive] = useState<CouncilActive | null>(null);
   const [importText, setImportText] = useState('');
   const [importFormat, setImportFormat] = useState<'bank' | 'fbr'>('bank');
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
@@ -82,6 +90,26 @@ export default function SettingsScreen() {
     }
     setKeys(nextKeys);
     setModels(nextModels);
+
+    // Same precedence the council itself resolves with: a key the user pasted
+    // is tried first, the build's embedded key is the last resort.
+    let active: CouncilActive | null = null;
+    for (const id of EMBEDDED_KEY_PROVIDER_IDS) {
+      if (nextKeys[id]?.saved && nextKeys[id].input) {
+        active = { id, source: 'your key', masked: maskKey(nextKeys[id].input) };
+        break;
+      }
+    }
+    if (!active) {
+      for (const id of EMBEDDED_KEY_PROVIDER_IDS) {
+        const key = getEmbeddedKey(id);
+        if (key) {
+          active = { id, source: 'embedded', masked: maskKey(key) };
+          break;
+        }
+      }
+    }
+    setCouncilActive(active);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -111,13 +139,13 @@ export default function SettingsScreen() {
     const value = keys[id]?.input?.trim() ?? '';
     if (!value) { Alert.alert('Enter an API key'); return; }
     await setProviderKey(id, value);
-    setKeys((prev) => ({ ...prev, [id]: { input: value, saved: true } }));
+    await load();
     Alert.alert('API key saved securely');
   };
 
   const handleClearKey = async (id: ProviderId) => {
     await setProviderKey(id, '');
-    setKeys((prev) => ({ ...prev, [id]: { input: '', saved: false } }));
+    await load();
   };
 
   const handleSelectModel = async (id: ProviderId, model: string) => {
@@ -267,6 +295,59 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
+      </Card>
+
+      <Card compact>
+        <Text style={styles.sectionTitle}>Council providers</Text>
+        <Text style={styles.hint}>
+          {councilActive
+            ? `Active: ${providerById(councilActive.id).label} · ${councilActive.source} · ${councilActive.masked}`
+            : 'No council key on this build — add one below to bring the council online.'}
+        </Text>
+
+        <Text style={styles.label}>Use your own Groq key</Text>
+        <View style={styles.row}>
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="Paste your Groq key"
+              value={keys.groq?.input ?? ''}
+              onChangeText={(text) =>
+                setKeys((prev) => ({
+                  ...prev,
+                  groq: { input: text, saved: prev.groq?.saved ?? false },
+                }))
+              }
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </View>
+          {saveButton('Save', () => handleSaveKey('groq'))}
+        </View>
+        {keys.groq?.saved && saveButton('Clear Groq key', () => handleClearKey('groq'), true)}
+
+        <Text style={styles.label}>Use your own Gemini key</Text>
+        <View style={styles.row}>
+          <View style={styles.rowField}>
+            <Input
+              style={styles.rowInput}
+              placeholder="Paste your Gemini key"
+              value={keys.gemini?.input ?? ''}
+              onChangeText={(text) =>
+                setKeys((prev) => ({
+                  ...prev,
+                  gemini: { input: text, saved: prev.gemini?.saved ?? false },
+                }))
+              }
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </View>
+          {saveButton('Save', () => handleSaveKey('gemini'))}
+        </View>
+        {keys.gemini?.saved && saveButton('Clear Gemini key', () => handleClearKey('gemini'), true)}
+
+        <Text style={styles.deferNote}>Talk anonymously; the app still never gives advice.</Text>
       </Card>
 
       <Card compact>

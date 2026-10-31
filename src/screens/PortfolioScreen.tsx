@@ -7,24 +7,16 @@ import { getHoldings, addHolding, deleteHolding } from '../database/db';
 import { Holding } from '../types';
 import { formatPKR } from '../utils/calculators';
 import { refreshAllPrices, priceFreshness } from '../services/psxService';
+import { findSymbol, searchSymbols } from '../services/psxSymbols';
+import type { PsxSymbol } from '../services/psxSymbols';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Card, Button, Input, EmptyState, LoadingState } from '../components';
 import { fonts } from '../utils/fonts';
 
-const SECTOR_MAP: Record<string, string> = {
-  LUCK: 'Cement', OGDC: 'OGMC', HBL: 'Bank', MEBL: 'Bank', UBL: 'Bank',
-  PPL: 'OGMC', POL: 'OGMC', ENGRO: 'Fertilizer', FFC: 'Fertilizer',
-  SYS: 'Tech', TRG: 'Tech', NESTLE: 'Food', KOHC: 'Chemical',
-  INDU: 'Auto', PSMC: 'Auto', HUBC: 'Power', KAPCO: 'Power',
-  MCB: 'Bank', BAFL: 'Bank', AKBL: 'Bank', FATIMA: 'Fertilizer',
-  MARI: 'OGMC', SEARL: 'Pharma', COLG: 'Pharma', HASCOL: 'OGMC',
-  PSO: 'OGMC', SHEL: 'OGMC', EFERT: 'Fertilizer',
-};
-
 function getSector(ticker: string): string {
-  return SECTOR_MAP[ticker.toUpperCase()] || 'Other';
+  return findSymbol(ticker)?.sector ?? 'Other';
 }
 
 export default function PortfolioScreen() {
@@ -36,6 +28,8 @@ export default function PortfolioScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [tickerOpen, setTickerOpen] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setHoldings(await getHoldings());
@@ -44,23 +38,50 @@ export default function PortfolioScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const matches = tickerOpen ? searchSymbols(ticker, 6) : [];
+
+  const handleTickerChange = (value: string) => {
+    setTicker(value);
+    setTickerOpen(value.trim().length > 0);
+    setErrors((prev) => ({ ...prev, ticker: '' }));
+  };
+
+  const selectSymbol = (row: PsxSymbol) => {
+    setTicker(row.symbol);
+    setTickerOpen(false);
+    setErrors((prev) => ({ ...prev, ticker: '' }));
+  };
+
+  const clearError = (field: string) => {
+    setErrors((prev) => ({ ...prev, [field]: '' }));
+  };
+
   const handleAdd = async () => {
-    if (!ticker || !quantity || !price) {
-      Alert.alert('Please fill all fields');
-      return;
-    }
     const q = parseFloat(quantity);
     const p = parseFloat(price);
-    if (isNaN(q) || isNaN(p) || q <= 0 || p <= 0) {
-      Alert.alert('Invalid values');
-      return;
+    const known = findSymbol(ticker);
+    const next: Record<string, string> = {};
+
+    if (!ticker.trim()) {
+      next.ticker = 'Pick a ticker from the list.';
+    } else if (!known) {
+      next.ticker = 'Unknown ticker — pick from the list.';
+    }
+    if (!quantity.trim() || isNaN(q) || q <= 0) {
+      next.quantity = 'Enter a quantity greater than 0.';
+    }
+    if (!price.trim() || isNaN(p) || p <= 0) {
+      next.price = 'Enter a buy price greater than 0.';
     }
     if (purchaseDate && Number.isNaN(Date.parse(purchaseDate))) {
-      Alert.alert('Invalid purchase date', 'Use the format YYYY-MM-DD, or leave it blank.');
-      return;
+      next.purchaseDate = 'Use YYYY-MM-DD, or leave the date blank.';
     }
+
+    setErrors(next);
+    if (Object.keys(next).length > 0 || !known) return;
+
     await addHolding({
-      ticker: ticker.toUpperCase(),
+      ticker: known.symbol,
       quantity: q,
       avg_buy_price: p,
       current_price: null,
@@ -71,6 +92,8 @@ export default function PortfolioScreen() {
     setQuantity('');
     setPrice('');
     setPurchaseDate('');
+    setTickerOpen(false);
+    setErrors({});
     setShowAdd(false);
     await load();
   };
@@ -153,17 +176,61 @@ export default function PortfolioScreen() {
       <Card>
         <View style={styles.cardHeader}>
           <Text style={typography.sectionTitle}>Holdings</Text>
-          <TouchableOpacity onPress={() => setShowAdd(!showAdd)}>
+          <TouchableOpacity onPress={() => { setShowAdd(!showAdd); setTickerOpen(false); setErrors({}); }}>
             <Text style={styles.addBtn}>{showAdd ? 'Cancel' : '+ Add'}</Text>
           </TouchableOpacity>
         </View>
 
         {showAdd && (
           <View style={styles.addForm}>
-            <Input placeholder="Ticker" value={ticker} onChangeText={setTicker} autoCapitalize="characters" />
-            <Input placeholder="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" />
-            <Input placeholder="Avg Buy Price (PKR)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
-            <Input placeholder="Purchase date (YYYY-MM-DD, optional)" value={purchaseDate} onChangeText={setPurchaseDate} autoCapitalize="none" />
+            <Input
+              placeholder="Ticker"
+              value={ticker}
+              onChangeText={handleTickerChange}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            {tickerOpen && matches.length > 0 && (
+              <View style={styles.suggestionList}>
+                {matches.map((row) => (
+                  <TouchableOpacity
+                    key={row.symbol}
+                    style={styles.suggestionRow}
+                    onPress={() => selectSymbol(row)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.suggestionLabel} numberOfLines={1}>
+                      {row.symbol} — {row.name}
+                    </Text>
+                    <View style={styles.sectorChip}>
+                      <Text style={styles.sectorChipText}>{row.sector}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {!!errors.ticker && <Text style={styles.errorText}>{errors.ticker}</Text>}
+            <Input
+              placeholder="Quantity"
+              value={quantity}
+              onChangeText={(value) => { setQuantity(value); clearError('quantity'); }}
+              keyboardType="decimal-pad"
+            />
+            {!!errors.quantity && <Text style={styles.errorText}>{errors.quantity}</Text>}
+            <Input
+              placeholder="Avg Buy Price (PKR)"
+              value={price}
+              onChangeText={(value) => { setPrice(value); clearError('price'); }}
+              keyboardType="decimal-pad"
+            />
+            {!!errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+            <Input
+              placeholder="Purchase date (YYYY-MM-DD, optional)"
+              value={purchaseDate}
+              onChangeText={(value) => { setPurchaseDate(value); clearError('purchaseDate'); }}
+              autoCapitalize="none"
+            />
+            {!!errors.purchaseDate && <Text style={styles.errorText}>{errors.purchaseDate}</Text>}
             <Text style={typography.small}>The purchase date decides your capital gains tax rate.</Text>
             <Button label="Add Holding" onPress={handleAdd} />
           </View>
@@ -214,6 +281,35 @@ const styles = StyleSheet.create({
   },
   addBtn: { color: colors.accent, fontSize: 15, fontFamily: fonts.bold },
   addForm: { marginBottom: spacing.lg },
+  suggestionList: {
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionLabel: { flex: 1, color: colors.textPrimary, fontSize: 13, fontFamily: fonts.regular, marginRight: spacing.sm },
+  sectorChip: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  sectorChipText: { color: colors.textSecondary, fontSize: 10, fontFamily: fonts.bold },
+  errorText: { color: colors.danger, fontSize: 12, fontFamily: fonts.regular, marginTop: -spacing.xs, marginBottom: spacing.sm },
   freshnessLabel: { color: colors.success, fontSize: 10, marginTop: 3, fontFamily: fonts.regular },
   freshnessStale: { color: colors.warning },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
