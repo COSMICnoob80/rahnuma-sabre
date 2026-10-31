@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rahnuma Sabre — Command Center</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg:       #000000;
+    --card:     #0a0b0c;
+    --card-2:   #0e1011;
+    --border:   #23262a;
+    --fg:       #f2f5f7;
+    --muted:    #9aa1a8;
+    --emerald:  #10b981;
+    --emerald-surface: rgba(16, 185, 129, .10);
+    --emerald-border:  rgba(16, 185, 129, .38);
+    --red:      #ef4444;
+    --red-surface: rgba(239, 68, 68, .10);
+    --red-border:  rgba(239, 68, 68, .38);
+    --gray:     #9aa1a8;
+    --gray-surface: rgba(154, 161, 168, .09);
+    --gray-border:  rgba(154, 161, 168, .34);
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --urdu: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", "Segoe UI", system-ui, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin: 0; }
+  body{
+    min-height: 100vh;
+    background: oklch(0.095 0.012 250);
+    font-family: var(--sans);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    display: grid;
+    place-items: center;
+    padding: 36px 20px 48px;
+  }
+  .stage{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .stage-label{
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stage-label .em{ color: var(--emerald); }
+
+  /* ---------- phone frame ---------- */
+  .phone{
+    width: 375px;
+    height: 820px;
+    padding: 12px;
+    background: oklch(0.06 0.008 250);
+    border: 1px solid oklch(0.30 0.020 250);
+    border-radius: 54px;
+    box-shadow: 0 34px 80px -32px oklch(0.02 0.010 250);
+  }
+  .screen{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border-radius: 42px;
+    overflow: hidden;
+  }
+  .island{
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 104px; height: 28px;
+    border-radius: 999px;
+    background: #0b0c0d;
+    border: 1px solid #17181a;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .home{
+    position: absolute;
+    bottom: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 4px;
+    border-radius: 999px;
+    background: var(--muted);
+    opacity: .4;
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  .stack{
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 56px 14px 14px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .stack::-webkit-scrollbar{ display: none; }
+
+  /* ---------- header ---------- */
+  .cc-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 2px;
+  }
+  .cc-title{
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+  .pulse-chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--emerald-surface);
+    border: 1px solid var(--emerald-border);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--emerald);
+    white-space: nowrap;
+    flex: none;
+  }
+  .pulse-chip .pdot{
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--emerald);
+    flex: none;
+  }
+
+  /* ---------- section labels ---------- */
+  .sec-label{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 2px 0 -4px;
+    padding: 0 2px;
+  }
+  .sec-label h2{
+    margin: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sec-label .hint{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .06em;
+    color: var(--muted);
+    opacity: .85;
+  }
+
+  /* ---------- fusion grid ---------- */
+  .fusion{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .mcard{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 112px;
+    padding: 9px 9px 9px 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gray);
+    border-radius: 10px;
+  }
+  .mcard.pos{ border-left-color: var(--emerald); }
+  .mcard.neg{ border-left-color: var(--red); }
+  .mcard.stale{ border-left-color: var(--gray); }
+
+  .m-label{
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-urdu{
+    font-family: var(--urdu);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+    min-height: 16px;
+  }
+  .m-price{
+    font-family: var(--mono);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: -.02em;
+    margin-top: 2px;
+  }
+  .m-foot{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    margin-top: auto;
+  }
+  .m-delta{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    white-space: nowrap;
+  }
+  .m-delta.pos{ color: var(--emerald); }
+  .m-delta.neg{ color: var(--red); }
+  .m-delta.stale{ color: var(--gray); }
+  .m-time{
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    opacity: .85;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .stale-chip{
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--gray-surface);
+    border: 1px solid var(--gray-border);
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--gray);
+    white-space: nowrap;
+    flex: none;
+  }
+
+  /* ---------- council note ---------- */
+  .note-card{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 14px 14px;
+  }
+  .note-label{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 9px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .note-label .ndot{
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--emerald);
+    flex: none;
+  }
+  .note-body{
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--fg);
+  }
+  .note-body + .note-body{ margin-top: 6px; }
+  .num{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: -.01em;
+  }
+  .num.neg{ color: var(--red); }
+  .num.pos{ color: var(--emerald); }
+  .num.stale{ color: var(--gray); }
+  .note-final{
+    margin: 11px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .personas{
+    display: flex;
+    gap: 7px;
+    margin-top: 11px;
+  }
+  .persona{
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ---------- feeds ---------- */
+  .feeds{
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    overflow: hidden;
+  }
+  .feed-row{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 9px 13px;
+  }
+  .feed-row + .feed-row{ border-top: 1px solid var(--border); }
+  .feed-chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    white-space: nowrap;
+    flex: none;
+  }
+  .feed-chip.live{
+    background: var(--emerald-surface);
+    border: 1px solid var(--emerald-border);
+    color: var(--emerald);
+  }
+  .feed-chip.off{
+    background: var(--gray-surface);
+    border: 1px solid var(--gray-border);
+    color: var(--gray);
+  }
+  .feed-chip .fdot{
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+  .feed-name{
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--fg);
+    white-space: nowrap;
+    flex: none;
+  }
+  .feed-desc{
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- contract ---------- */
+  .contract{
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px 30px;
+    background: #060707;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .contract .line{
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    color: var(--muted);
+  }
+  .contract .refresh{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--muted);
+    opacity: .8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--emerald);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="stage" data-od-id="command-center-stage">
+    <div class="stage-label">Rahnuma Sabre · <span class="em">fused view</span> · 375 px</div>
+
+    <div class="phone" data-od-id="command-center-phone">
+      <div class="screen">
+        <div class="island" aria-hidden="true"></div>
+
+        <main class="stack" data-od-id="command-center-screen">
+
+          <!-- 1 · header -->
+          <header class="cc-head" data-od-id="cc-header"
+                  aria-label="Command Center. Hybrid pulse.">
+            <h1 class="cc-title" data-od-id="cc-title">Command Center</h1>
+            <span class="pulse-chip" data-od-id="cc-pulse-chip"><span class="pdot" aria-hidden="true"></span>HYBRID PULSE</span>
+          </header>
+
+          <!-- 2 · fusion strip -->
+          <div class="sec-label">
+            <h2 data-od-id="fusion-label">Fusion strip</h2>
+            <span class="hint">signed % · 6 marks</span>
+          </div>
+
+          <section class="fusion" data-od-id="fusion-strip"
+                   aria-label="Fusion strip, six market cards with signed percentages and freshness.">
+            <article class="mcard neg" data-od-id="market-card-kse100"
+                     aria-label="KSE 100, 118,420, minus 3.2 percent, timestamp 09:15.">
+              <span class="m-label">KSE 100</span>
+              <span class="m-urdu" lang="ur" dir="rtl">کے ایس ای 100</span>
+              <span class="m-price">118,420</span>
+              <span class="m-foot">
+                <span class="m-delta neg">-3.2%</span>
+                <span class="m-time">09:15</span>
+              </span>
+            </article>
+
+            <article class="mcard pos" data-od-id="market-card-nasdaq"
+                     aria-label="NASDAQ, 19,077, plus 1.1 percent, timestamp 09:15.">
+              <span class="m-label">NASDAQ</span>
+              <span class="m-urdu" lang="ur" dir="rtl">ناسڈیک</span>
+              <span class="m-price">19,077</span>
+              <span class="m-foot">
+                <span class="m-delta pos">+1.1%</span>
+                <span class="m-time">09:15</span>
+              </span>
+            </article>
+
+            <article class="mcard pos" data-od-id="market-card-gold"
+                     aria-label="Gold, 2,712 US dollars, plus 0.4 percent, timestamp 09:15.">
+              <span class="m-label">GOLD</span>
+              <span class="m-urdu" lang="ur" dir="rtl">سونا</span>
+              <span class="m-price">$2,712</span>
+              <span class="m-foot">
+                <span class="m-delta pos">+0.4%</span>
+                <span class="m-time">09:15</span>
+              </span>
+            </article>
+
+            <article class="mcard stale" data-od-id="market-card-dowjones"
+                     aria-label="Dow Jones, 42,150, plus 0.5 percent, stale, timestamp 07:45.">
+              <span class="m-label">DOW JONES</span>
+              <span class="m-urdu" lang="ur" dir="rtl">ڈاؤ جونز</span>
+              <span class="m-price">42,150</span>
+              <span class="m-foot">
+                <span class="m-delta stale">+0.5%</span>
+                <span class="stale-chip">STALE</span>
+              </span>
+            </article>
+
+            <article class="mcard neg" data-od-id="market-card-brent"
+                     aria-label="Brent, 73 dollars 40 cents, minus 0.9 percent, timestamp 09:15.">
+              <span class="m-label">BRENT</span>
+              <span class="m-urdu" lang="ur" dir="rtl">برینٹ</span>
+              <span class="m-price">$73.40</span>
+              <span class="m-foot">
+                <span class="m-delta neg">-0.9%</span>
+                <span class="m-time">09:15</span>
+              </span>
+            </article>
+
+            <article class="mcard stale" data-od-id="market-card-pkrusd"
+                     aria-label="PKR to US dollar, 281.35, plus 0.1 percent, stale, timestamp 07:45.">
+              <span class="m-label">PKR/USD</span>
+              <span class="m-urdu" lang="ur" dir="rtl">ڈالر</span>
+              <span class="m-price">281.35</span>
+              <span class="m-foot">
+                <span class="m-delta stale">+0.1%</span>
+                <span class="stale-chip">STALE</span>
+              </span>
+            </article>
+          </section>
+
+          <!-- 3 · council note -->
+          <div class="sec-label">
+            <h2>Council note</h2>
+            <span class="hint">2 lines · numbers only</span>
+          </div>
+
+          <section class="note-card" data-od-id="council-note-card"
+                   aria-label="Council purse note. KSE 100 at 118,420, minus 3.2 percent; NASDAQ 19,077, plus 1.1 percent; PKR to dollar 281.35, plus 0.1 percent, stale. Gold 2,712 dollars plus 0.4 percent; Brent 73 dollars 40 cents minus 0.9 percent; Dow Jones 42,150 plus 0.5 percent, stale. Information only, not investment advice.">
+            <div class="note-label" data-od-id="council-note-label">
+              <span class="ndot" aria-hidden="true"></span>Council purse — launched
+            </div>
+            <p class="note-body" data-od-id="council-note-line1">
+              KSE 100 <span class="num">118,420</span> <span class="num neg">-3.2%</span> ·
+              NASDAQ <span class="num">19,077</span> <span class="num pos">+1.1%</span> ·
+              PKR/USD <span class="num">281.35</span> <span class="num stale">+0.1% stale</span>.
+            </p>
+            <p class="note-body" data-od-id="council-note-line2">
+              Gold <span class="num">$2,712</span> <span class="num pos">+0.4%</span> ·
+              Brent <span class="num">$73.40</span> <span class="num neg">-0.9%</span> ·
+              Dow <span class="num">42,150</span> <span class="num stale">+0.5% stale</span>.
+            </p>
+            <p class="note-final" data-od-id="council-note-final">Information only — not investment advice.</p>
+            <div class="personas" role="group" aria-label="Council personas: Buffett, Munger, Burry."
+                 data-od-id="council-personas">
+              <span class="persona">Buffett</span>
+              <span class="persona">Munger</span>
+              <span class="persona">Burry</span>
+            </div>
+          </section>
+
+          <!-- 4 · feeds -->
+          <div class="sec-label">
+            <h2>Feeds</h2>
+            <span class="hint">freshness</span>
+          </div>
+
+          <section class="feeds" data-od-id="feeds-row"
+                   aria-label="Feeds. PSX DPS local quotes, live. Yahoo Finance global quotes, live. News feeds, not wired yet.">
+            <div class="feed-row" data-od-id="feed-psx">
+              <span class="feed-chip live"><span class="fdot" aria-hidden="true"></span>LIVE</span>
+              <span class="feed-name">PSX DPS</span>
+              <span class="feed-desc">local quotes</span>
+            </div>
+            <div class="feed-row" data-od-id="feed-yahoo">
+              <span class="feed-chip live"><span class="fdot" aria-hidden="true"></span>LIVE</span>
+              <span class="feed-name">Yahoo Finance</span>
+              <span class="feed-desc">global quotes</span>
+            </div>
+            <div class="feed-row" data-od-id="feed-news">
+              <span class="feed-chip off"><span class="fdot" aria-hidden="true"></span>OFF</span>
+              <span class="feed-name">News feeds</span>
+              <span class="feed-desc">not wired yet</span>
+            </div>
+          </section>
+
+        </main>
+
+        <!-- 5 · contract -->
+        <footer class="contract" data-od-id="command-center-contract"
+                aria-label="Rahnuma Sabre, information only, never advice. Auto refresh every 60 seconds, last sync 09:15 PKT.">
+          <span class="line" data-od-id="contract-line">Rahnuma Sabre — Information only, never advice</span>
+          <span class="refresh" data-od-id="contract-refresh">auto-refresh 60s · last sync 09:15 PKT</span>
+        </footer>
+
+        <div class="home" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
