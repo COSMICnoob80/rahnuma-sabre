@@ -174,6 +174,22 @@ export const PSX_SYMBOLS: PsxSymbol[] = [
   { symbol: 'UPFL', name: 'Unilever Pakistan Foods Limited', sector: 'Food' },
   { symbol: 'WAFI', name: 'Wafi Energy Pakistan Limited', sector: 'OMC' },
   { symbol: 'YOUW', name: 'Yousaf Weaving Mills Limited', sector: 'Weaving' },
+
+  // --- Listed ETFs (PSX sector code 0837 "EXCHANGE TRADED FUNDS") ---
+  // Pulled 2026-11-02 from the exchange's own ETF slider on
+  // https://www.psx.com.pk/psx, then verified one by one against
+  // https://dps.psx.com.pk/etf/{SYMBOL} (HTTP 200, fund name in the page title).
+  // The 754-row equity screener does not carry these, which is why the
+  // KSE-100 + top-50 selection above never picked them up.
+  { symbol: 'UBLPETF', name: 'UBL Pakistan Enterprise ETF', sector: 'ETF' },
+  { symbol: 'NITGETF', name: 'NIT Pakistan Gateway ETF', sector: 'ETF' },
+  { symbol: 'NBPGETF', name: 'NBP Pakistan Growth ETF', sector: 'ETF' },
+  { symbol: 'MZNPETF', name: 'Meezan Pakistan ETF', sector: 'ETF' },
+  { symbol: 'JSMFETF', name: 'JS Momentum Factor Exchange Traded Fund', sector: 'ETF' },
+  { symbol: 'ACIETF', name: 'Alfalah Consumer Index (ETF)', sector: 'ETF' },
+  { symbol: 'HBLTETF', name: 'HBL Total Treasury ETF', sector: 'ETF' },
+  { symbol: 'JSGBETF', name: 'JS Global Banking Sector (ETF)', sector: 'ETF' },
+  { symbol: 'MIIETF', name: 'Mahaana Islamic Index ETF', sector: 'ETF' },
 ];
 
 /** Exact, case-insensitive symbol match. Unknown strings return null. */

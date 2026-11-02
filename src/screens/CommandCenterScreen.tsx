@@ -3,11 +3,10 @@ import { View, Text, ScrollView, StyleSheet, Platform, RefreshControl } from 're
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchOutlookQuotes } from '../services/globalMarkets';
 import type { InstrumentQuote } from '../services/globalMarkets';
-import { hasAnyProvider } from '../services/llmService';
+import { COUNCIL_BUSY_MESSAGE, hasAnyProvider } from '../services/llmService';
 import {
   COUNCIL_LIVE_CHIP,
   COUNCIL_PERSONAS,
-  COUNCIL_STATIC_CHIP,
   buildContextSnapshot,
   requestCouncilNote,
 } from '../services/outlookCouncil';
@@ -184,7 +183,7 @@ export default function CommandCenterScreen() {
     : councilLoading
       ? 'reading the record'
       : hasKey
-        ? COUNCIL_STATIC_CHIP
+        ? COUNCIL_BUSY_MESSAGE
         : 'key needed';
 
   return (
@@ -206,7 +205,7 @@ export default function CommandCenterScreen() {
 
         <View style={styles.secLabel}>
           <Text style={styles.secTitle}>Fusion strip</Text>
-          <Text style={styles.secHint}>signed % · 6 marks</Text>
+          <Text style={styles.secHint}>signed % · 8 marks</Text>
         </View>
 
         <View style={styles.fusionGrid}>
@@ -224,6 +223,11 @@ export default function CommandCenterScreen() {
               <Text style={styles.mPrice} numberOfLines={1} adjustsFontSizeToFit>
                 {card.value}
               </Text>
+              {card.pkrValue ? (
+                <Text style={styles.mPkr} numberOfLines={1} adjustsFontSizeToFit>
+                  {card.pkrValue}
+                </Text>
+              ) : null}
               <View style={styles.mFoot}>
                 <Text style={[styles.mDelta, { color: toneColor(card.tone) }]}>{card.delta}</Text>
                 {card.stale ? (
@@ -416,7 +420,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   mcard: {
-    flexBasis: '30%',
+    flexBasis: '22%',
     flexGrow: 1,
     minWidth: 0,
     minHeight: 108,
@@ -450,6 +454,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
     marginTop: 3,
+  },
+  mPkr: {
+    color: colors.textMuted,
+    fontFamily: MONO_FONT,
+    fontSize: 8.5,
+    letterSpacing: -0.1,
+    marginTop: 1,
   },
   mFoot: {
     flexDirection: 'row',

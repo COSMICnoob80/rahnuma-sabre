@@ -173,12 +173,20 @@ test('cache: keys are per symbol and the 24h window is enforced with a mocked cl
   assert.equal(isCacheFresh(NOW + 1, NOW), false);
 });
 
-test('contract: national is KSE-100 and international carries the five live symbols', () => {
+test('contract: national is KSE-100 and international carries the seven live symbols', () => {
   const national = OUTLOOK_SYMBOLS.filter((s) => s.region === 'national').map((s) => s.display);
   const international = OUTLOOK_SYMBOLS.filter((s) => s.region === 'international').map((s) => s.display);
 
   assert.deepEqual(national, ['KSE-100']);
-  assert.deepEqual(international, ['S&P 500', 'NASDAQ', 'Gold XAU', 'Brent', 'USD/PKR']);
+  assert.deepEqual(international, [
+    'S&P 500',
+    'NASDAQ',
+    'Gold XAU',
+    'Silver',
+    'Copper',
+    'Brent',
+    'USD/PKR',
+  ]);
 });
 
 test('contract: provider URLs encode tickers instead of interpolating them raw', () => {

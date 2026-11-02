@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {
   FUSION_FRESH_WINDOW_MS,
   buildFusionCards,
+  fusionPkrValue,
   fusionTimeLabel,
   fusionTone,
   fusionValue,
   isFusionStale,
+  pkrConvert,
+  pkrRateFromQuotes,
 } from '../src/utils/fusionStrip.ts';
 import type { InstrumentQuote } from '../src/services/globalMarkets.ts';
 
@@ -138,4 +141,44 @@ test('fusion: a missing quote is labelled, not blanked', () => {
   assert.equal(card.delta, '—');
   assert.equal(card.stale, true);
   assert.equal(fusionTimeLabel(''), '—');
+});
+
+test('fusion: every non-PKR card carries a PKR value from the same session rate', () => {
+  const fx = quote({
+    symbol: 'PKR=X',
+    label: 'USD/PKR',
+    region: 'international',
+    pricePKR: 278.5,
+    priceNote: 'PKR quoted',
+    changePct: 0.1,
+    source: 'Yahoo Finance chart',
+  });
+  const gold = quote({
+    symbol: 'GC=F',
+    label: 'Gold XAU',
+    region: 'international',
+    pricePKR: 2712,
+    priceNote: 'USD quoted',
+    changePct: 0.42,
+    source: 'Yahoo Finance chart',
+  });
+  const kse = quote();
+
+  // Exact math: USD value x PKR/USD, rounded to paisa.
+  assert.equal(pkrConvert(2712, 278.5), 755292);
+  assert.equal(pkrConvert(null, 278.5), null);
+  assert.equal(pkrConvert(2712, 0), null);
+
+  const cards = buildFusionCards([kse, fx, gold], NOW);
+  const bySymbol = Object.fromEntries(cards.map((entry) => [entry.symbol, entry]));
+
+  assert.equal(bySymbol['GC=F'].pkrValue, '≈ PKR 755,292.00');
+  // The PKR index and the FX pair itself are never multiplied by the rate.
+  assert.equal(bySymbol['KSE100.KAR'].pkrValue, null);
+  assert.equal(bySymbol['PKR=X'].pkrValue, null);
+
+  // The rate comes from the snapshot — no second fetch and no rate, no value.
+  assert.equal(pkrRateFromQuotes([kse, fx, gold]), 278.5);
+  assert.equal(pkrRateFromQuotes([kse, gold]), null);
+  assert.equal(fusionPkrValue(gold, null), null);
 });

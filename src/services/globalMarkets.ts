@@ -35,8 +35,13 @@ export const OUTLOOK_SYMBOLS: OutlookSymbol[] = [
   { sourceSymbol: '^GSPC', display: 'S&P 500', region: 'international' },
   { sourceSymbol: '^IXIC', display: 'NASDAQ', region: 'international' },
   { sourceSymbol: 'GC=F', display: 'Gold XAU', region: 'international' },
+  { sourceSymbol: 'SI=F', display: 'Silver', region: 'international' },
+  { sourceSymbol: 'HG=F', display: 'Copper', region: 'international' },
   { sourceSymbol: 'BZ=F', display: 'Brent', region: 'international' },
   { sourceSymbol: 'PKR=X', display: 'USD/PKR', region: 'international' },
+  // TUNGSTEN is deliberately excluded: there is no liquid quoted futures or
+  // spot market for it that this app can verify, so it would ship as a
+  // permanent "No data" card. Metals stay to the ones with a real quote.
 ];
 
 const YAHOO_HOSTS = [

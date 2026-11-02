@@ -49,3 +49,21 @@ test('psx symbols: symbol matches rank before name matches and the list caps at 
   assert.deepEqual(searchSymbols('ZZZZZZ'), []);
   assert.equal(searchSymbols('a', 3).length, 3);
 });
+
+test('psx symbols: the catalog carries at least 8 PSX-listed ETFs', () => {
+  const etfs = PSX_SYMBOLS.filter((row) => row.sector === 'ETF');
+  assert.ok(etfs.length >= 8, `catalog only has ${etfs.length} ETF rows`);
+
+  for (const row of etfs) {
+    // .KAR-compatible: upper-case alphanumeric, no spaces or punctuation.
+    assert.match(row.symbol, /^[A-Z][A-Z0-9]*$/, `bad ETF symbol: ${row.symbol}`);
+    assert.ok(row.name.trim().length > 0, `${row.symbol} has no name`);
+  }
+
+  const symbols = new Set(etfs.map((row) => row.symbol));
+  for (const expected of ['MIIETF', 'UBLPETF', 'NITGETF', 'MZNPETF']) {
+    assert.ok(symbols.has(expected), `ETF missing from catalog: ${expected}`);
+  }
+  // ETFs must be findable through the same picker path as equities.
+  assert.equal(findSymbol('miiETF')?.sector, 'ETF');
+});

@@ -34,8 +34,8 @@ export function getEmbeddedGeminiKey(): string | null {
 }
 
 // Order in which embedded build keys join the fall-through chain, after the
-// user's own pasted keys.
-export const EMBEDDED_KEY_PROVIDER_IDS: ProviderId[] = ['gemini', 'groq'];
+// user's own pasted keys. Groq leads: internal key, free tier, fastest.
+export const EMBEDDED_KEY_PROVIDER_IDS: ProviderId[] = ['groq', 'gemini'];
 
 export function getEmbeddedKey(providerId: ProviderId): string | null {
   if (providerId === 'gemini') return getEmbeddedGeminiKey();

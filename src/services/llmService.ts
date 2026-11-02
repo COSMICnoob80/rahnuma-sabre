@@ -1,13 +1,7 @@
 import { getSetting, setSetting } from '../database/db';
-import { ProviderId } from './providers';
+import { orderProviders, ProviderId } from './providers';
 import { getConfiguredProviders } from '../utils/secureStorage';
-import {
-  buildRequest,
-  cacheKey,
-  ChatMessage,
-  parseResponse,
-  providerLabel,
-} from './llmAdapters';
+import { buildRequest, cacheKey, ChatMessage, parseResponse } from './llmAdapters';
 
 export { ChatMessage };
 
@@ -36,6 +30,20 @@ export class NoProviderError extends Error {
   constructor() {
     super('No AI provider configured. Add a free key in Settings (Gemini or Groq), or an OpenRouter key.');
     this.name = 'NoProviderError';
+  }
+}
+
+// The ONLY failure text that reaches the user when every provider is down.
+// Per-provider 429/500/503 chatter stays on the error object for diagnostics.
+export const COUNCIL_BUSY_MESSAGE = 'Council busy — retry shortly';
+
+export class AllProvidersFailedError extends Error {
+  readonly failedProviders: { provider: ProviderId; error: string }[];
+
+  constructor(failedProviders: { provider: ProviderId; error: string }[]) {
+    super(COUNCIL_BUSY_MESSAGE);
+    this.name = 'AllProvidersFailedError';
+    this.failedProviders = failedProviders;
   }
 }
 
@@ -118,12 +126,8 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
   const configured = await getConfiguredProviders();
   if (configured.length === 0) throw new NoProviderError();
 
-  const ordered = preferredProvider
-    ? [
-        ...configured.filter((p) => p.id === preferredProvider),
-        ...configured.filter((p) => p.id !== preferredProvider),
-      ]
-    : configured;
+  // Groq first, Gemini second, OpenRouter last; capped at three attempts.
+  const ordered = orderProviders(configured, preferredProvider);
 
   const failedProviders: { provider: ProviderId; error: string }[] = [];
 
@@ -147,10 +151,7 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
     }
   }
 
-  const summary = failedProviders
-    .map((f) => `${providerLabel(f.provider)}: ${f.error}`)
-    .join(' · ');
-  throw new Error(`All AI providers failed — ${summary}`);
+  throw new AllProvidersFailedError(failedProviders);
 }
 
 export async function hasAnyProvider(): Promise<boolean> {
