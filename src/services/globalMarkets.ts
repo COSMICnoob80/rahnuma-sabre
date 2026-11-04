@@ -472,6 +472,91 @@ async function writeCacheEntry(sourceSymbol: string, entry: OutlookCacheEntry): 
   }
 }
 
+// Global property card. The harvest verified the Yahoo QUOTE PAGE (200 for all
+// ten real-estate symbols) while the chart endpoint 429'd on both hosts, so this
+// one card reads the quote page and never touches `/v8/finance/chart`.
+export const GLOBAL_PROPERTY_SYMBOL = '^DJUSRE';
+const YAHOO_QUOTE_BASE = 'https://finance.yahoo.com/quote';
+const YAHOO_QUOTE_SOURCE = 'Yahoo quote page';
+
+// Yahoo quote page (docs/SCOPE-REAL-ESTATE.md §2): the symbol's own price sits
+// in `data-testid="qsp-price"`. The page also embeds unrelated market-summary
+// widgets, so anchor on that node and read the first number after its tag
+// instead of the first number on the page.
+export function parseYahooQuotePage(html: string): ParsedMarketQuote | null {
+  if (typeof html !== 'string' || html.length === 0) return null;
+  const anchor = html.indexOf('data-testid="qsp-price"');
+  if (anchor < 0) return null;
+
+  const priceWindow = html.slice(anchor, anchor + 1_500);
+  const priceMatch = />\s*([\d,]+(?:\.\d+)?)\s*</.exec(priceWindow);
+  if (!priceMatch) return null;
+  const price = Number(priceMatch[1].replace(/,/g, ''));
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  let changePct: number | null = null;
+  const percentAnchor = html.indexOf('data-testid="qsp-price-change-percent"', anchor + 1);
+  if (percentAnchor >= 0) {
+    const percentWindow = html.slice(percentAnchor, percentAnchor + 300);
+    const percentMatch = />\s*\(?\s*([-+]?[\d.]+)\s*%\s*\)?/.exec(percentWindow);
+    if (percentMatch) {
+      const percent = Number(percentMatch[1]);
+      if (Number.isFinite(percent)) changePct = round2(percent);
+    }
+  }
+
+  return { price, changePct, currency: 'USD' };
+}
+
+// The global property card (^DJUSRE, Dow Jones US Real Estate index). Reads the
+// verified quote page, caches in the same 24 h slot as every outlook symbol, and
+// degrades to cached / `No data` rather than a fabricated number when Yahoo 429s.
+export async function fetchGlobalPropertyQuote(now: number = Date.now()): Promise<InstrumentQuote> {
+  const spec: OutlookSymbol = {
+    sourceSymbol: GLOBAL_PROPERTY_SYMBOL,
+    display: 'Global property',
+    region: 'international',
+  };
+
+  try {
+    const url = `${YAHOO_QUOTE_BASE}/${encodeURIComponent(GLOBAL_PROPERTY_SYMBOL)}/`;
+    const response = await fetchWithTimeout(url, {
+      'User-Agent': BROWSER_UA,
+      Accept: 'text/html,application/xhtml+xml',
+    });
+    if (response && response.ok) {
+      const body = await response.text().catch(() => '');
+      const parsed = parseYahooQuotePage(body);
+      if (parsed) {
+        const priceNote = 'index level';
+        await writeCacheEntry(GLOBAL_PROPERTY_SYMBOL, {
+          t: now,
+          price: parsed.price,
+          changePct: parsed.changePct,
+          source: YAHOO_QUOTE_SOURCE,
+          priceNote,
+        });
+        return {
+          symbol: GLOBAL_PROPERTY_SYMBOL,
+          label: 'Global property',
+          region: 'international',
+          pricePKR: parsed.price,
+          priceNote,
+          changePct: parsed.changePct,
+          fetchedAtIsoUtc: new Date(now).toISOString(),
+          source: YAHOO_QUOTE_SOURCE,
+          fresh: true,
+        };
+      }
+    }
+  } catch {
+    // A failed page fetch falls through to the durable cache.
+  }
+
+  const cached = await readCacheEntry(GLOBAL_PROPERTY_SYMBOL, now);
+  return buildDegradedQuote(spec, cached, now);
+}
+
 async function fetchOne(spec: OutlookSymbol, now: number): Promise<InstrumentQuote> {
   try {
     let resolved: NationalProviderResult | null;

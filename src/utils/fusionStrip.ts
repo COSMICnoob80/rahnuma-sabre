@@ -10,9 +10,20 @@
  */
 
 import type { InstrumentQuote } from '../services/globalMarkets';
-import { formatChangePct, formatOutlookNumber } from '../services/globalMarkets.ts';
+import {
+  GLOBAL_PROPERTY_SYMBOL,
+  formatChangePct,
+  formatOutlookNumber,
+} from '../services/globalMarkets.ts';
+import type { PmexQuote } from '../services/pmexService.ts';
+import { PMEX_OFFLINE_VALUE, pkrPerTolaFromUsdPerOz } from '../services/pmexService.ts';
 
 export const FUSION_FRESH_WINDOW_MS = 15 * 60 * 1000;
+
+export const PMEX_GOLD_SYMBOL = 'PMEX_GOLD';
+export const PMEX_SILVER_SYMBOL = 'PMEX_SILVER';
+export const PMEX_SOURCE_CHIP = 'PMEX';
+export const PMEX_DERIVED_SOURCE_CHIP = 'PMEX derived';
 
 export type FusionTone = 'pos' | 'neg' | 'flat';
 
@@ -30,6 +41,9 @@ export interface FusionCard {
   stale: boolean;
   timeLabel: string;
   source: string;
+  // Tiny provenance chip rendered on the card: "PMEX" for the local-commodity
+  // lanes, null for the Yahoo/DPS cards that already name their source below.
+  sourceChip: string | null;
 }
 
 // EN label comes from the quote itself; the Urdu sublabel is fixed per symbol.
@@ -42,6 +56,9 @@ const URDU_LABELS: Record<string, string> = {
   'HG=F': 'تانبا',
   'BZ=F': 'برینٹ',
   'PKR=X': 'ڈالر',
+  [PMEX_GOLD_SYMBOL]: 'سونا',
+  [PMEX_SILVER_SYMBOL]: 'چاندی',
+  [GLOBAL_PROPERTY_SYMBOL]: 'عالمی رئیل اسٹیٹ',
 };
 
 // These Yahoo tickers quote in US dollars, so the card shows the unit.
@@ -118,6 +135,104 @@ export function buildFusionCards(quotes: InstrumentQuote[], now: number = Date.n
       stale,
       timeLabel: fusionTimeLabel(quote.fetchedAtIsoUtc),
       source: quote.source,
+      sourceChip: null,
     };
   });
+}
+
+function pmexStale(updatedAtMs: number | null, now: number): boolean {
+  if (updatedAtMs === null || !Number.isFinite(updatedAtMs)) return true;
+  const age = now - updatedAtMs;
+  return !Number.isFinite(age) || age > FUSION_FRESH_WINDOW_MS;
+}
+
+function pmexTimeLabel(updatedAtMs: number | null): string {
+  if (updatedAtMs === null || !Number.isFinite(updatedAtMs)) return '—';
+  return fusionTimeLabel(new Date(updatedAtMs).toISOString());
+}
+
+function pmexValue(value: number | null, unavailable: boolean): string {
+  if (unavailable) return PMEX_OFFLINE_VALUE;
+  if (value === null || !Number.isFinite(value)) return 'No data';
+  return formatOutlookNumber(value);
+}
+
+// Two PMEX cards. Gold is quoted in PKR/tola directly (TOLAGOLD-*); silver is
+// USD/oz (SL100OZ) and converted with the SAME session's PKR/USD, so the card
+// chip says "PMEX derived". An unreachable exchange yields a gray PMEX offline
+// card — never a fabricated number.
+export function buildCommodityCards(
+  quote: PmexQuote | null,
+  rate: number | null,
+  now: number = Date.now(),
+  offline = false
+): FusionCard[] {
+  const unavailable = offline || quote === null;
+
+  const goldValue = unavailable ? null : quote.goldPkrPerTola;
+  const goldStale = unavailable || pmexStale(quote.goldUpdatedAtMs, now);
+  const goldDelta = unavailable ? null : quote.goldChangePct;
+
+  const derivedSilver =
+    quote && quote.silverUsdPerOz !== null && rate !== null
+      ? pkrPerTolaFromUsdPerOz(quote.silverUsdPerOz, rate)
+      : (quote?.silverPkrPerTola ?? null);
+  const silverValue = unavailable ? null : derivedSilver;
+  const silverStale = unavailable || pmexStale(quote.silverUpdatedAtMs, now);
+  const silverDelta = unavailable ? null : quote.silverChangePct;
+
+  const gold: FusionCard = {
+    symbol: PMEX_GOLD_SYMBOL,
+    label: 'GOLD PKR/TOLA',
+    urdu: URDU_LABELS[PMEX_GOLD_SYMBOL] ?? '',
+    value: pmexValue(goldValue, unavailable),
+    pkrValue: null,
+    delta: formatChangePct(goldDelta),
+    tone: fusionTone(goldDelta, goldStale),
+    stale: goldStale,
+    timeLabel: unavailable ? '—' : pmexTimeLabel(quote.goldUpdatedAtMs),
+    source: unavailable ? 'PMEX offline' : 'PMEX',
+    sourceChip: PMEX_SOURCE_CHIP,
+  };
+
+  const silver: FusionCard = {
+    symbol: PMEX_SILVER_SYMBOL,
+    label: 'SILVER PKR/TOLA',
+    urdu: URDU_LABELS[PMEX_SILVER_SYMBOL] ?? '',
+    value: pmexValue(silverValue, unavailable),
+    pkrValue: null,
+    delta: formatChangePct(silverDelta),
+    tone: fusionTone(silverDelta, silverStale),
+    stale: silverStale,
+    timeLabel: unavailable ? '—' : pmexTimeLabel(quote.silverUpdatedAtMs),
+    source: unavailable ? 'PMEX offline' : 'PMEX (derived)',
+    sourceChip: unavailable ? PMEX_SOURCE_CHIP : PMEX_DERIVED_SOURCE_CHIP,
+  };
+
+  return [gold, silver];
+}
+
+// Global property card: ^DJUSRE index level from the verified Yahoo quote page,
+// converted at the session's PKR/USD. A missing quote is labelled, never blanked.
+export function buildPropertyCard(
+  quote: InstrumentQuote | null,
+  rate: number | null,
+  now: number = Date.now()
+): FusionCard {
+  const stale = quote === null || isFusionStale(quote.fetchedAtIsoUtc, now);
+  const converted = quote === null ? null : pkrConvert(quote.pricePKR, rate);
+
+  return {
+    symbol: GLOBAL_PROPERTY_SYMBOL,
+    label: 'GLOBAL PROPERTY',
+    urdu: URDU_LABELS[GLOBAL_PROPERTY_SYMBOL] ?? '',
+    value: quote === null ? 'No data' : fusionValue(quote),
+    pkrValue: converted === null ? null : `≈ PKR ${formatOutlookNumber(converted)}`,
+    delta: formatChangePct(quote === null ? null : quote.changePct),
+    tone: fusionTone(quote === null ? null : quote.changePct, stale),
+    stale,
+    timeLabel: fusionTimeLabel(quote === null ? '' : quote.fetchedAtIsoUtc),
+    source: quote?.source ?? 'none',
+    sourceChip: null,
+  };
 }

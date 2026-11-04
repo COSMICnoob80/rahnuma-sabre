@@ -1,8 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchOutlookQuotes } from '../services/globalMarkets';
+import { fetchGlobalPropertyQuote, fetchOutlookQuotes } from '../services/globalMarkets';
 import type { InstrumentQuote } from '../services/globalMarkets';
+import { fetchPmexQuote } from '../services/pmexService';
+import type { PmexQuote } from '../services/pmexService';
 import { COUNCIL_BUSY_MESSAGE, hasAnyProvider } from '../services/llmService';
 import {
   COUNCIL_LIVE_CHIP,
@@ -14,7 +16,12 @@ import type { CouncilNoteResult } from '../services/outlookCouncil';
 import { fetchNews, storyAge } from '../services/newsService';
 import type { NewsFeedSource, NewsSourceStatus, NewsStory } from '../services/newsService';
 import { SUMMARIES_OFFLINE_CHIP, summarizeStories } from '../services/newsFuse';
-import { buildFusionCards } from '../utils/fusionStrip';
+import {
+  buildCommodityCards,
+  buildFusionCards,
+  buildPropertyCard,
+  pkrRateFromQuotes,
+} from '../utils/fusionStrip';
 import type { FusionTone } from '../utils/fusionStrip';
 import { CONTEXT_CHIP, OUTLOOK_CONTRACT, councilNotes } from '../utils/outlookText';
 import { colors } from '../theme/colors';
@@ -69,11 +76,25 @@ export default function CommandCenterScreen() {
   const [lastSync, setLastSync] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pmex, setPmex] = useState<PmexQuote | null>(null);
+  const [pmexOffline, setPmexOffline] = useState(false);
+  const [property, setProperty] = useState<InstrumentQuote | null>(null);
 
   const load = useCallback(async () => {
     const result = await fetchOutlookQuotes();
     setQuotes(result.quotes);
     setLastSync(Date.now());
+
+    // PMEX and the global property card both convert with the SAME snapshot's
+    // PKR/USD — one rate read, many uses, no second FX fetch.
+    const rate = pkrRateFromQuotes(result.quotes);
+    const [pmexResult, propertyQuote] = await Promise.all([
+      fetchPmexQuote(rate).catch(() => null),
+      fetchGlobalPropertyQuote().catch(() => null),
+    ]);
+    setPmex(pmexResult?.quote ?? null);
+    setPmexOffline(pmexResult === null);
+    setProperty(propertyQuote);
 
     let keyed = false;
     try {
@@ -127,7 +148,12 @@ export default function CommandCenterScreen() {
   }
 
   const now = Date.now();
-  const cards = buildFusionCards(quotes, now);
+  const rate = pkrRateFromQuotes(quotes);
+  const cards = [
+    ...buildFusionCards(quotes, now),
+    ...buildCommodityCards(pmex, rate, now, pmexOffline),
+    buildPropertyCard(property, rate, now),
+  ];
   const national = quotes.filter((quote) => quote.region === 'national');
   const international = quotes.filter((quote) => quote.region === 'international');
 
@@ -205,7 +231,7 @@ export default function CommandCenterScreen() {
 
         <View style={styles.secLabel}>
           <Text style={styles.secTitle}>Fusion strip</Text>
-          <Text style={styles.secHint}>signed % · 8 marks</Text>
+          <Text style={styles.secHint}>signed % · {cards.length} marks</Text>
         </View>
 
         <View style={styles.fusionGrid}>
@@ -214,9 +240,14 @@ export default function CommandCenterScreen() {
               key={card.symbol}
               style={[styles.mcard, { borderLeftColor: toneColor(card.tone) }]}
             >
-              <Text style={styles.mLabel} numberOfLines={1}>
-                {card.label}
-              </Text>
+              <View style={styles.mTop}>
+                <Text style={styles.mLabel} numberOfLines={1}>
+                  {card.label}
+                </Text>
+                {card.sourceChip ? (
+                  <Text style={styles.mSourceChip}>{card.sourceChip}</Text>
+                ) : null}
+              </View>
               <Text style={styles.mUrdu} numberOfLines={1}>
                 {card.urdu}
               </Text>
@@ -432,12 +463,28 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 8,
   },
+  mTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mLabel: {
     color: colors.textPrimary,
     fontSize: 10.5,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+    flexShrink: 1,
+  },
+  mSourceChip: {
+    fontFamily: MONO_FONT,
+    fontSize: 7.5,
+    letterSpacing: 0.4,
+    color: colors.textMuted,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.full,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    marginLeft: 4,
+    overflow: 'hidden',
   },
   mUrdu: {
     color: colors.textSecondary,
