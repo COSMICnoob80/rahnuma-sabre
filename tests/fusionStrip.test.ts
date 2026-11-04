@@ -172,6 +172,7 @@ test('fusion: every non-PKR card carries a PKR value from the same session rate'
   const cards = buildFusionCards([kse, fx, gold], NOW);
   const bySymbol = Object.fromEntries(cards.map((entry) => [entry.symbol, entry]));
 
+  // Priced asset: a USD-quoted commodity keeps its ≈ PKR line.
   assert.equal(bySymbol['GC=F'].pkrValue, '≈ PKR 755,292.00');
   // The PKR index and the FX pair itself are never multiplied by the rate.
   assert.equal(bySymbol['KSE100.KAR'].pkrValue, null);

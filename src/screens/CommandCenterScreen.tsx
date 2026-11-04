@@ -152,7 +152,7 @@ export default function CommandCenterScreen() {
   const cards = [
     ...buildFusionCards(quotes, now),
     ...buildCommodityCards(pmex, rate, now, pmexOffline),
-    buildPropertyCard(property, rate, now),
+    buildPropertyCard(property, now),
   ];
   const national = quotes.filter((quote) => quote.region === 'national');
   const international = quotes.filter((quote) => quote.region === 'international');

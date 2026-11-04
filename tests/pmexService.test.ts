@@ -168,7 +168,7 @@ test('property feed: the quote-page parser anchors on qsp-price, not a widget nu
   assert.equal(parseYahooQuotePage(''), null);
 });
 
-test('property card: ^DJUSRE converts to PKR at the same session rate', () => {
+test('property card: ^DJUSRE shows the index level only — an index point is not a currency asset', () => {
   const quote: InstrumentQuote = {
     symbol: '^DJUSRE',
     label: 'Global property',
@@ -181,15 +181,15 @@ test('property card: ^DJUSRE converts to PKR at the same session rate', () => {
     fresh: true,
   };
 
-  const card = buildPropertyCard(quote, 278.5, NOW);
+  const card = buildPropertyCard(quote, NOW);
   assert.equal(card.value, '381.03');
-  assert.equal(card.pkrValue, '≈ PKR 106,116.86'); // 381.03 x 278.5
+  assert.equal(card.pkrValue, null); // no ≈ PKR line on an index card
   assert.equal(card.delta, '+0.56%');
   assert.equal(card.tone, 'pos');
   assert.equal(card.stale, false);
   assert.equal(card.urdu, 'عالمی رئیل اسٹیٹ');
 
-  assert.equal(buildPropertyCard(quote, null, NOW).pkrValue, null);
-  assert.equal(buildPropertyCard(null, 278.5, NOW).value, 'No data');
-  assert.equal(buildPropertyCard(null, 278.5, NOW).stale, true);
+  assert.equal(buildPropertyCard(null, NOW).value, 'No data');
+  assert.equal(buildPropertyCard(null, NOW).pkrValue, null);
+  assert.equal(buildPropertyCard(null, NOW).stale, true);
 });

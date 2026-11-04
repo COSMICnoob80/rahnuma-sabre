@@ -152,6 +152,8 @@ data remains the real validator, as with every existing Yahoo symbol.
 - **XLRE, IYR, SCHH, RWX, VNQI** — valid symbols, redundant with the three above;
   dropped from v1 to keep the lane honest and small.
 
+The strip renders index levels in USD with % change only — levels are not currency-converted (verified-correct decision 2026-11-04).
+
 ---
 
 ## 3. Data boundaries — what this lane cannot honestly show

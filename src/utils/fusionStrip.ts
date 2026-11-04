@@ -212,22 +212,21 @@ export function buildCommodityCards(
   return [gold, silver];
 }
 
-// Global property card: ^DJUSRE index level from the verified Yahoo quote page,
-// converted at the session's PKR/USD. A missing quote is labelled, never blanked.
+// Global property card: ^DJUSRE INDEX LEVEL from the verified Yahoo quote page.
+// An index point is not a currency asset, so the level is never currency-converted.
+// A missing quote is labelled, never blanked.
 export function buildPropertyCard(
   quote: InstrumentQuote | null,
-  rate: number | null,
   now: number = Date.now()
 ): FusionCard {
   const stale = quote === null || isFusionStale(quote.fetchedAtIsoUtc, now);
-  const converted = quote === null ? null : pkrConvert(quote.pricePKR, rate);
 
   return {
     symbol: GLOBAL_PROPERTY_SYMBOL,
     label: 'GLOBAL PROPERTY',
     urdu: URDU_LABELS[GLOBAL_PROPERTY_SYMBOL] ?? '',
     value: quote === null ? 'No data' : fusionValue(quote),
-    pkrValue: converted === null ? null : `≈ PKR ${formatOutlookNumber(converted)}`,
+    pkrValue: null,
     delta: formatChangePct(quote === null ? null : quote.changePct),
     tone: fusionTone(quote === null ? null : quote.changePct, stale),
     stale,
