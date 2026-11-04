@@ -9,6 +9,7 @@ import BriefingScreen from '../screens/BriefingScreen';
 import OutlookScreen from '../screens/OutlookScreen';
 import PortfolioScreen from '../screens/PortfolioScreen';
 import CommandCenterScreen from '../screens/CommandCenterScreen';
+import DirectoryScreen from '../screens/DirectoryScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
 import AdvisoryScreen from '../screens/AdvisoryScreen';
@@ -47,6 +48,13 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path d="M2 12h4l2-5 3 10 2.5-6 2 3H22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx="12" cy="12" r="1" fill={color} />
+      </Svg>
+    ),
+    Directory: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Rect x="4" y="3" width="7" height="18" rx="1" stroke={color} strokeWidth="2" />
+        <Rect x="13" y="9" width="7" height="12" rx="1" stroke={color} strokeWidth="2" />
+        <Path d="M7 7h.01M11 7h.01M7 11h.01M11 11h.01M7 15h.01M11 15h.01M16 13h.01M16 17h.01" stroke={color} strokeWidth="2" strokeLinecap="round" />
       </Svg>
     ),
     Budget: (
@@ -113,6 +121,7 @@ function TabsNavigator() {
         component={CommandCenterScreen}
         options={{ tabBarLabel: 'Command' }}
       />
+      <Tab.Screen name="Directory" component={DirectoryScreen} />
       <Tab.Screen name="Budget" component={BudgetScreen} />
       <Tab.Screen name="Calculators" component={CalculatorsScreen} />
       <Tab.Screen name="Advisory" component={AdvisoryScreen} />
