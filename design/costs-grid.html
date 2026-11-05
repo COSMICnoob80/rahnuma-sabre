@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375,initial-scale=1">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#000;color:#e5e7eb;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:24px 16px}
+.screen{width:100%;max-width:375px}
+h1{font-size:18px;font-weight:700;letter-spacing:0.12em;color:#10b981;margin-bottom:4px}
+.sub{font-size:12px;color:#9ca3af;margin-bottom:16px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;background:#111;border-left:3px solid #374151;border-radius:8px;padding:14px;margin-bottom:10px}
+.row.us{border-color:#10b981}
+.row .name{font-size:14px;font-weight:600}
+.row .note{font-size:11px;color:#9ca3af;margin-top:6px;line-height:1.4}
+.row .price{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;text-align:right;white-space:nowrap}
+.row .per{font-size:10px;color:#6b7280;text-align:right;margin-top:2px}
+.tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;background:#1a2e22;color:#10b981;margin-left:6px;vertical-align:middle}
+.src{font-size:9px;color:#6b7280;font-family:'JetBrains Mono',monospace}
+.footer{margin-top:16px;font-size:10px;color:#6b7280;text-align:center;border-top:1px solid #1f2937;padding-top:12px;line-height:1.6}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{font-size:9px;color:#9ca3af;background:#111;border:1px solid #1f2937;padding:3px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+<div class="screen">
+  <h1>COSTS</h1>
+  <div class="sub">What this costs. What the alternatives cost. Facts.</div>
+  <div class="chiprow">
+    <span class="chip">No account</span><span class="chip">No contract</span><span class="chip">No call</span><span class="chip">No card</span>
+  </div>
+
+  <div class="row us">
+    <div>
+      <div class="name">Rahnuma SABRE <span class="tag">THIS APP</span></div>
+      <div class="note">No server. No login. No card. Your ledger lives on this phone.</div>
+    </div>
+    <div>
+      <div class="price" style="color:#10b981">PKR 0</div>
+      <div class="per">forever, as shipped</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="name">Pro advisory seat <span class="tag">REPORTED</span></div>
+      <div class="note">One seat, reported rate — not a published quote.</div>
+      <div class="src">reported $31,980/yr · USD/PKR 276.527777 · open.er-api.com · 2026-11-04</div>
+    </div>
+    <div>
+      <div class="price">≈ PKR 8,843,358<span style="font-size:11px;color:#6b7280">/yr</span></div>
+      <div class="per">one seat</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="name">India family advisory tier <span class="tag">REPORTED</span></div>
+      <div class="note">Reported figure from the article intro — not verified live in this build.</div>
+      <div class="src">Bloomberg India · Where to Invest special · Oct 2026</div>
+    </div>
+    <div>
+      <div class="price">₹151,000<span style="font-size:11px;color:#6b7280">/yr</span></div>
+      <div class="per">or up to 2.5% of assets</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="name">Brokerage &amp; account fees <span class="tag">YOURS</span></div>
+      <div class="note">Brokerage fees apply wherever you trade — that is your broker's page, not ours.</div>
+    </div>
+    <div>
+      <div class="price" style="color:#6b7280">varies</div>
+      <div class="per">by broker</div>
+    </div>
+  </div>
+
+  <div class="footer">Information only · Not investment advice<br>Rahnuma will never tell you to buy or sell.</div>
+</div>
+</body>
+</html>
