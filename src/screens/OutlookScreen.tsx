@@ -16,6 +16,8 @@ import {
   requestCouncilNote,
 } from '../services/outlookCouncil';
 import type { CouncilNoteResult } from '../services/outlookCouncil';
+import { requestContextNote } from '../services/contextNote';
+import type { ContextNote } from '../services/contextNote';
 import {
   HORIZON_CHIPS,
   OUTLOOK_CONTRACT,
@@ -82,6 +84,7 @@ export default function OutlookScreen() {
   const [degraded, setDegraded] = useState<string[]>([]);
   const [hasKey, setHasKey] = useState(false);
   const [council, setCouncil] = useState<CouncilNoteResult | null>(null);
+  const [contextNote, setContextNote] = useState<ContextNote | null>(null);
   const [councilLoading, setCouncilLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,14 +104,23 @@ export default function OutlookScreen() {
 
     if (!keyed) {
       setCouncil(null);
+      setContextNote(null);
       return;
     }
 
     // The council reads the snapshot on its own clock so the quotes paint first.
+    const snapshot = buildContextSnapshot(result.quotes);
     setCouncilLoading(true);
-    requestCouncilNote(buildContextSnapshot(result.quotes), COUNCIL_PERSONAS)
-      .then((note) => setCouncil(note))
-      .catch(() => setCouncil(null))
+    requestCouncilNote(snapshot, COUNCIL_PERSONAS)
+      .then(async (note) => {
+        setCouncil(note);
+        const context = note ? await requestContextNote(snapshot, note) : null;
+        setContextNote(context);
+      })
+      .catch(() => {
+        setCouncil(null);
+        setContextNote(null);
+      })
       .finally(() => setCouncilLoading(false));
   }, []);
 
@@ -220,30 +232,45 @@ export default function OutlookScreen() {
             <Chip label={councilChip} />
           </View>
 
-          {renderedNotes.map((note) => (
-            <View key={note.by} style={styles.quote}>
-              <Text style={styles.qmark}>“</Text>
-              <Text style={styles.quoteText}>{note.text}</Text>
-              <View style={styles.byRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{note.initials}</Text>
-                </View>
-                <Text style={styles.qname}>
-                  {note.by}
-                  {note.org ? ` (${note.org})` : ''}
+          {contextNote ? (
+            contextNote.parts.map((part) => (
+              <View key={part.id} style={styles.contextBlock}>
+                <Text style={styles.contextTitle}>
+                  {part.number}. {part.title}
                 </Text>
+                <Text style={styles.contextBody}>{part.body}</Text>
               </View>
-            </View>
-          ))}
+            ))
+          ) : (
+            renderedNotes.map((note) => (
+              <View key={note.by} style={styles.quote}>
+                <Text style={styles.qmark}>“</Text>
+                <Text style={styles.quoteText}>{note.text}</Text>
+                <View style={styles.byRow}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{note.initials}</Text>
+                  </View>
+                  <Text style={styles.qname}>
+                    {note.by}
+                    {note.org ? ` (${note.org})` : ''}
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
 
-          {isLive && council?.synthesis ? (
+          {!contextNote && isLive && council?.synthesis ? (
             <Text style={styles.synthesis}>{council.synthesis}</Text>
           ) : null}
 
-          {isLive && council ? (
+          {contextNote || (isLive && council) ? (
             <Text style={styles.councilProvider}>
-              {council.disclaimer}
-              {council.provider ? ` · read by ${council.provider}${council.cached ? ' (cached)' : ''}` : ''}
+              {contextNote?.disclaimer ?? council?.disclaimer ?? ''}
+              {(contextNote?.provider ?? council?.provider)
+                ? ` · read by ${contextNote?.provider ?? council?.provider}${
+                    (contextNote?.cached ?? council?.cached) ? ' (cached)' : ''
+                  }`
+                : ''}
             </Text>
           ) : null}
 
@@ -405,6 +432,26 @@ const styles = StyleSheet.create({
 
   caption: { ...typography.small, marginTop: spacing.md, lineHeight: 17 },
   captionStrong: { color: colors.textPrimary, fontFamily: fonts.bold },
+
+  contextBlock: {
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  contextTitle: {
+    color: colors.accent,
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  contextBody: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: fonts.regular,
+  },
 
   quote: {
     backgroundColor: colors.surfaceRaised,

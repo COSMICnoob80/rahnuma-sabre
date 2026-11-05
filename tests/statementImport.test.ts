@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  importStatementBatch,
   parseBankCsv,
   parseBankCsvReport,
   parseFbrWealthLines,
@@ -96,4 +97,92 @@ test('summarize: cash and bank sum together, other kinds stay separate, all at 2
 
 test('summarize: an empty import totals zero rather than NaN', () => {
   assert.deepEqual(summarizeNetWorth([]), { cash: 0, other: 0, total: 0 });
+});
+
+const ALIAS_CSV = [
+  'Transaction Date,Details,Amount,Balance',
+  '2026-06-01,Salary,250000,250000',
+  '2026-06-02,ATM Karachi,-5000,245000',
+].join('\n');
+
+test('batch: alternate headers and a signed amount column parse across banks', () => {
+  const report = importStatementBatch([
+    {
+      name: 'whatever-renamed.csv',
+      text: ['HBL statement', 'Account No: 1234-5678', ALIAS_CSV].join('\n'),
+    },
+  ]);
+
+  assert.equal(report.files.length, 1);
+  assert.equal(report.files[0].sourceFormat, 'bank_csv');
+  assert.equal(report.files[0].bankName, 'HBL');
+  assert.equal(report.files[0].accountLabel, '1234-5678');
+  assert.equal(report.staged.length, 2);
+  assert.equal(report.staged[0].amountPKR, 250000);
+  assert.equal(report.staged[0].label, 'Salary');
+  assert.equal(report.staged[1].amountPKR, -5000);
+});
+
+const OVERLAP_TEXT = [
+  'Statement Period: 01-06-2026 to 30-06-2026',
+  'Date,Narration,Withdrawal,Deposit,Balance',
+  ',Pending ATM charge,,5000,245000',
+  '2026-06-05,Coffee,300,0,244700',
+].join('\n');
+
+test('batch: two overlapping files collapse to one pending row', () => {
+  const report = importStatementBatch([
+    { name: 'first.csv', text: OVERLAP_TEXT },
+    { name: 'second.csv', text: OVERLAP_TEXT },
+  ]);
+
+  assert.equal(report.files.length, 2);
+  assert.equal(report.pending.length, 1);
+  assert.equal(report.pendingCount, 1);
+  assert.equal(report.staged.length, 1);
+  assert.equal(report.duplicateCount, 2);
+  assert.equal(report.files[0].periodStart, '01-06-2026');
+  assert.equal(report.files[0].periodEnd, '30-06-2026');
+});
+
+test('batch: the pending counter is reported before commit, never silently dropped', () => {
+  const report = importStatementBatch([
+    {
+      name: 'pending.csv',
+      text: [
+        'Date,Description,Withdrawal,Deposit,Balance',
+        ',Uncleared cheque,,1500,10000',
+        '2026-06-07,Cleared line,0,2000,12000',
+      ].join('\n'),
+    },
+  ]);
+
+  assert.equal(report.files[0].skippedPending, 1);
+  assert.equal(report.pendingCount, 1);
+  assert.match(report.pending[0].label, /Uncleared cheque/);
+  assert.equal(report.staged.length, 1);
+});
+
+test('batch: a renamed file imports identically — identity is the content', () => {
+  const first = importStatementBatch([{ name: 'download.csv', text: OVERLAP_TEXT }]);
+  const second = importStatementBatch([{ name: 'march-statement.csv', text: OVERLAP_TEXT }]);
+
+  assert.deepEqual(
+    { ...first.files[0], name: '' },
+    { ...second.files[0], name: '' }
+  );
+  assert.deepEqual(first.staged, second.staged);
+});
+
+test('batch: an FBR wealth file and a bank file stay separate accounts', () => {
+  const report = importStatementBatch([
+    { name: 'fbr.txt', text: ['Cash in Hand: 250,000', 'Gold: Rs. 500,000'].join('\n') },
+    { name: 'hbl.csv', text: ['HBL', ALIAS_CSV].join('\n') },
+  ]);
+
+  assert.equal(report.files.length, 2);
+  assert.equal(report.files[0].sourceFormat, 'fbr_wealth');
+  assert.equal(report.files[1].sourceFormat, 'bank_csv');
+  assert.equal(report.staged.length, 4);
+  assert.equal(report.pendingCount, 0);
 });

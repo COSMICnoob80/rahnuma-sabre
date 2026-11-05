@@ -13,6 +13,8 @@ import {
   requestCouncilNote,
 } from '../services/outlookCouncil';
 import type { CouncilNoteResult } from '../services/outlookCouncil';
+import { requestContextNote } from '../services/contextNote';
+import type { ContextNote } from '../services/contextNote';
 import { fetchNews, storyAge } from '../services/newsService';
 import type { NewsFeedSource, NewsSourceStatus, NewsStory } from '../services/newsService';
 import { SUMMARIES_OFFLINE_CHIP, summarizeStories } from '../services/newsFuse';
@@ -67,6 +69,7 @@ export default function CommandCenterScreen() {
   const [quotes, setQuotes] = useState<InstrumentQuote[]>([]);
   const [hasKey, setHasKey] = useState(false);
   const [council, setCouncil] = useState<CouncilNoteResult | null>(null);
+  const [contextNote, setContextNote] = useState<ContextNote | null>(null);
   const [councilLoading, setCouncilLoading] = useState(false);
   const [stories, setStories] = useState<NewsStory[]>([]);
   const [summaries, setSummaries] = useState<string[]>([]);
@@ -107,13 +110,22 @@ export default function CommandCenterScreen() {
     if (keyed) {
       // The council reads the exact snapshot the strip above is showing, so the
       // two cards can never disagree about the numbers.
+      const snapshot = buildContextSnapshot(result.quotes);
       setCouncilLoading(true);
-      requestCouncilNote(buildContextSnapshot(result.quotes), COUNCIL_PERSONAS)
-        .then((note) => setCouncil(note))
-        .catch(() => setCouncil(null))
+      requestCouncilNote(snapshot, COUNCIL_PERSONAS)
+        .then(async (note) => {
+          setCouncil(note);
+          const context = note ? await requestContextNote(snapshot, note) : null;
+          setContextNote(context);
+        })
+        .catch(() => {
+          setCouncil(null);
+          setContextNote(null);
+        })
         .finally(() => setCouncilLoading(false));
     } else {
       setCouncil(null);
+      setContextNote(null);
     }
 
     const feed = await fetchNews().catch(() => null);
@@ -286,14 +298,23 @@ export default function CommandCenterScreen() {
             <Chip label={councilChip} />
           </View>
 
-          {renderedNotes.map((note) => (
-            <Text key={note.by} style={styles.noteBody}>
-              <Text style={styles.noteBy}>{note.by}: </Text>
-              {note.text}
-            </Text>
-          ))}
+          {contextNote
+            ? contextNote.parts.map((part) => (
+                <View key={part.id} style={styles.contextBlock}>
+                  <Text style={styles.contextTitle}>
+                    {part.number}. {part.title}
+                  </Text>
+                  <Text style={styles.noteBody}>{part.body}</Text>
+                </View>
+              ))
+            : renderedNotes.map((note) => (
+                <Text key={note.by} style={styles.noteBody}>
+                  <Text style={styles.noteBy}>{note.by}: </Text>
+                  {note.text}
+                </Text>
+              ))}
 
-          {isLive && council?.synthesis ? (
+          {!contextNote && isLive && council?.synthesis ? (
             <Text style={styles.noteSynthesis}>{council.synthesis}</Text>
           ) : null}
 
@@ -302,7 +323,7 @@ export default function CommandCenterScreen() {
           ) : null}
 
           <Text style={styles.noteFinal}>
-            {council?.disclaimer ?? 'Information only, not investment advice.'}
+            {contextNote?.disclaimer ?? council?.disclaimer ?? 'Information only, not investment advice.'}
           </Text>
 
           <View style={styles.chipRow}>
@@ -552,6 +573,19 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontFamily: fonts.bold,
     letterSpacing: 1.6,
+  },
+  contextBlock: {
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  contextTitle: {
+    color: colors.accent,
+    fontSize: 10,
+    fontFamily: fonts.bold,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
   },
   noteBody: {
     color: colors.textPrimary,
