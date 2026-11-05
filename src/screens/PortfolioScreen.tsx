@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl
 } from 'react-native';
@@ -9,6 +9,7 @@ import { formatPKR } from '../utils/calculators';
 import { refreshAllPrices, priceFreshness } from '../services/psxService';
 import { findSymbol, searchSymbols } from '../services/psxSymbols';
 import type { PsxSymbol } from '../services/psxSymbols';
+import { computePortfolioXray, XRAY_HEADER, XRAY_SCOPE } from '../utils/portfolioXray';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -29,6 +30,7 @@ export default function PortfolioScreen() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [tickerOpen, setTickerOpen] = useState(false);
+  const [showXray, setShowXray] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
@@ -128,6 +130,20 @@ export default function PortfolioScreen() {
     sectorData[sec] = (sectorData[sec] || 0) + (h.current_price ?? h.avg_buy_price) * h.quantity;
   });
   const sectorColors = [colors.accent, colors.success, colors.warning, colors.danger, '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+
+  const xray = useMemo(
+    () =>
+      computePortfolioXray(
+        holdings.map((h) => ({
+          ticker: h.ticker,
+          quantity: h.quantity,
+          price: h.current_price ?? h.avg_buy_price,
+          costBasis: h.avg_buy_price * h.quantity,
+          sector: getSector(h.ticker),
+        }))
+      ),
+    [holdings]
+  );
 
   if (loading) {
     return (
@@ -265,6 +281,65 @@ export default function PortfolioScreen() {
           );
         })}
       </Card>
+
+      {/* Portfolio X-ray — composition only, provably from the ledger */}
+      {holdings.length > 0 && (
+        <Card>
+          <TouchableOpacity
+            style={styles.cardHeader}
+            onPress={() => setShowXray(!showXray)}
+            activeOpacity={0.7}
+          >
+            <Text style={[typography.bodyStrong, styles.xrayTitle]}>{XRAY_HEADER}</Text>
+            <Text style={styles.addBtn}>{showXray ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+          <Text style={typography.small}>{XRAY_SCOPE}</Text>
+          {showXray && (
+            <View style={styles.xrayBody}>
+              <View style={styles.xrayRow}>
+                <Text style={typography.caption}>Largest holding</Text>
+                <Text style={typography.captionStrong}>
+                  {xray.weights[0]
+                    ? `${xray.weights[0].ticker} · ${xray.largestHoldingPct.toFixed(1)}%`
+                    : 'No data'}
+                </Text>
+              </View>
+              <View style={styles.xrayRow}>
+                <Text style={typography.caption}>Top five share</Text>
+                <Text style={typography.captionStrong}>{xray.topFivePct.toFixed(1)}%</Text>
+              </View>
+              <View style={styles.xrayRow}>
+                <Text style={typography.caption}>HHI (Σ w²)</Text>
+                <Text style={typography.captionStrong}>{xray.hhi.toFixed(3)}</Text>
+              </View>
+              <View style={styles.xrayRow}>
+                <Text style={typography.caption}>Holdings</Text>
+                <Text style={typography.captionStrong}>{xray.holdingsCount}</Text>
+              </View>
+              <View style={styles.xrayRow}>
+                <Text style={typography.caption}>Cost basis</Text>
+                <Text style={typography.captionStrong}>{formatPKR(xray.totalCostBasis)}</Text>
+              </View>
+
+              <Text style={styles.xraySection}>Weights</Text>
+              {xray.weights.map((row, i) => (
+                <View key={`${row.ticker}-${i}`} style={styles.xrayRow}>
+                  <Text style={typography.small}>{row.ticker}</Text>
+                  <Text style={typography.small}>{row.weightPct.toFixed(1)}%</Text>
+                </View>
+              ))}
+
+              <Text style={styles.xraySection}>Sector share</Text>
+              {xray.sectorSplit.map((row) => (
+                <View key={row.sector} style={styles.xrayRow}>
+                  <Text style={typography.small}>{row.sector}</Text>
+                  <Text style={typography.small}>{row.pct.toFixed(1)}%</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -333,4 +408,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectorBarFill: { height: '100%', borderRadius: 4 },
+  xrayTitle: { flex: 1, marginRight: spacing.sm, fontSize: 14 },
+  xrayBody: { marginTop: spacing.md },
+  xrayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs },
+  xraySection: {
+    color: colors.textSecondary,
+    fontSize: 10.5,
+    fontFamily: fonts.bold,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
 });

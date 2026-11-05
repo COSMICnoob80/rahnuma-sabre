@@ -10,6 +10,7 @@ import OutlookScreen from '../screens/OutlookScreen';
 import PortfolioScreen from '../screens/PortfolioScreen';
 import CommandCenterScreen from '../screens/CommandCenterScreen';
 import DirectoryScreen from '../screens/DirectoryScreen';
+import CostScreen from '../screens/CostScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
 import AdvisoryScreen from '../screens/AdvisoryScreen';
@@ -55,6 +56,12 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
         <Rect x="4" y="3" width="7" height="18" rx="1" stroke={color} strokeWidth="2" />
         <Rect x="13" y="9" width="7" height="12" rx="1" stroke={color} strokeWidth="2" />
         <Path d="M7 7h.01M11 7h.01M7 11h.01M11 11h.01M7 15h.01M11 15h.01M16 13h.01M16 17h.01" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      </Svg>
+    ),
+    Costs: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M6 3h12v18l-2.5-1.5L13 21l-1-1.5L11 21l-2.5-1.5L6 21V3z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+        <Path d="M9 8h6M9 12h4" stroke={color} strokeWidth="2" strokeLinecap="round" />
       </Svg>
     ),
     Budget: (
@@ -122,6 +129,7 @@ function TabsNavigator() {
         options={{ tabBarLabel: 'Command' }}
       />
       <Tab.Screen name="Directory" component={DirectoryScreen} />
+      <Tab.Screen name="Costs" component={CostScreen} />
       <Tab.Screen name="Budget" component={BudgetScreen} />
       <Tab.Screen name="Calculators" component={CalculatorsScreen} />
       <Tab.Screen name="Advisory" component={AdvisoryScreen} />
