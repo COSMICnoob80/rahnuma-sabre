@@ -2,6 +2,16 @@ import { getSetting, setSetting } from '../database/db';
 import { orderProviders, ProviderId } from './providers';
 import { getConfiguredProviders } from '../utils/secureStorage';
 import { buildRequest, cacheKey, ChatMessage, parseResponse } from './llmAdapters';
+import {
+  COUNCIL_CHECK_PROMPT,
+  COUNCIL_CHECK_SYSTEM_PROMPT,
+  CouncilCheckResult,
+  CouncilLadderResult,
+  LadderAttemptFailure,
+  LlmHttpError,
+  runCouncilCheck,
+  runCouncilLadder,
+} from './councilLadder';
 
 export { ChatMessage };
 
@@ -99,7 +109,9 @@ async function callProvider(
 
     if (!response.ok) {
       const message = (data as any)?.error?.message || `HTTP ${response.status}`;
-      throw new Error(message);
+      // The status is what lets the ladder tell "this model is gone" (404, try
+      // the next model) from "this lane is throttled" (429/5xx, next provider).
+      throw new LlmHttpError(provider, response.status, message);
     }
 
     const text = parseResponse(provider, data);
@@ -126,32 +138,72 @@ export async function askAdvisor(options: AskOptions): Promise<AskResult> {
   const configured = await getConfiguredProviders();
   if (configured.length === 0) throw new NoProviderError();
 
-  // Groq first, Gemini second, OpenRouter last; capped at three attempts.
+  // Groq first, Gemini second, OpenRouter last; capped at three providers.
   const ordered = orderProviders(configured, preferredProvider);
 
-  const failedProviders: { provider: ProviderId; error: string }[] = [];
-
-  for (const provider of ordered) {
-    try {
-      const text = await callProvider(
+  const ladder: CouncilLadderResult = await runCouncilLadder({
+    providers: ordered,
+    attempt: (provider, model) =>
+      callProvider(
         provider.id,
-        provider.model,
+        model,
         provider.key,
         systemPrompt,
         messages,
         options.timeoutMs
-      );
-      if (useCache) await writeCache(cacheKey(systemPrompt, messages), text, provider.id);
-      return { text, provider: provider.id, cached: false, failedProviders };
-    } catch (error) {
-      failedProviders.push({
-        provider: provider.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      ),
+  });
+
+  if (ladder.ok) {
+    if (useCache) {
+      await writeCache(cacheKey(systemPrompt, messages), ladder.text, ladder.provider);
     }
+    return {
+      text: ladder.text,
+      provider: ladder.provider,
+      cached: false,
+      failedProviders: uniqueFailures(ladder.failures),
+    };
   }
 
-  throw new AllProvidersFailedError(failedProviders);
+  throw new AllProvidersFailedError(uniqueFailures(ladder.failures));
+}
+
+// One row per provider even when several of its models failed; the first error
+// text is kept for diagnostics.
+function uniqueFailures(
+  failures: LadderAttemptFailure[]
+): { provider: ProviderId; error: string }[] {
+  const seen = new Set<ProviderId>();
+  const rows: { provider: ProviderId; error: string }[] = [];
+  for (const failure of failures) {
+    if (seen.has(failure.provider)) continue;
+    seen.add(failure.provider);
+    rows.push({ provider: failure.provider, error: failure.error });
+  }
+  return rows;
+}
+
+// Phone-side diagnostic: one tiny prompt through every configured provider, so
+// the founder can see which lane is failing on his own network. It uses the
+// same per-provider model ladder, bounded to 15 seconds total, and returns only
+// closed-vocabulary chips — never raw provider text or quotation content.
+export async function runCouncilSelfTest(): Promise<CouncilCheckResult> {
+  const configured = await getConfiguredProviders();
+  if (configured.length === 0) return { ok: false, statuses: [] };
+
+  return runCouncilCheck({
+    providers: orderProviders(configured),
+    attempt: (provider, model, timeoutMs) =>
+      callProvider(
+        provider.id,
+        model,
+        provider.key,
+        COUNCIL_CHECK_SYSTEM_PROMPT,
+        [{ role: 'user', content: COUNCIL_CHECK_PROMPT }],
+        timeoutMs
+      ),
+  });
 }
 
 export async function hasAnyProvider(): Promise<boolean> {

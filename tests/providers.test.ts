@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MAX_PROVIDER_ATTEMPTS,
   PROVIDERS,
+  modelCandidatesFor,
   orderProviders,
   providerById,
   withEmbeddedFallback,
@@ -100,4 +101,37 @@ test('provider chain: an absent build key adds no provider', () => {
     { id: 'gemini' as const, key: '', model: 'gemini-3.8-flash' },
   ]);
   assert.deepEqual(merged, []);
+});
+
+test('model ladder: each provider pins its ordered model candidates', () => {
+  assert.deepEqual(modelCandidatesFor('groq'), [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+  ]);
+  assert.deepEqual(modelCandidatesFor('gemini'), [
+    'gemini-3.8-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+  ]);
+  assert.deepEqual(modelCandidatesFor('openrouter'), [
+    'deepseek/deepseek-v4-flash',
+    'deepseek/deepseek-chat-v3:free',
+    'moonshotai/kimi-k2',
+    'z-ai/glm-4.6',
+  ]);
+});
+
+test('model ladder: the selected model leads and is never duplicated', () => {
+  assert.deepEqual(modelCandidatesFor('groq', 'llama-3.1-8b-instant'), [
+    'llama-3.1-8b-instant',
+    'llama-3.3-70b-versatile',
+  ]);
+  assert.deepEqual(modelCandidatesFor('gemini', 'gemini-3.8-flash'), [
+    'gemini-3.8-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+  ]);
+  const custom = modelCandidatesFor('gemini', 'gemini-3.5-flash');
+  assert.equal(custom[0], 'gemini-3.5-flash');
+  assert.equal(new Set(custom).size, custom.length);
 });

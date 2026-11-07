@@ -6,6 +6,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getSetting, setSetting, addAsset } from '../database/db';
 import { PROVIDERS, ProviderId, providerById } from '../services/providers';
 import { EMBEDDED_KEY_PROVIDER_IDS, getEmbeddedKey } from '../services/advisoryKey';
+import { runCouncilSelfTest } from '../services/llmService';
+import type { CouncilCheckStatus } from '../services/councilLadder';
 import {
   getProviderKey, setProviderKey, getProviderModel, setProviderModel,
 } from '../utils/secureStorage';
@@ -65,6 +67,8 @@ export default function SettingsScreen() {
   const [keys, setKeys] = useState<KeysState>({});
   const [models, setModels] = useState<ModelsState>({});
   const [councilActive, setCouncilActive] = useState<CouncilActive | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [checkStatuses, setCheckStatuses] = useState<CouncilCheckStatus[]>([]);
   const [importText, setImportText] = useState('');
   const [importFormat, setImportFormat] = useState<'bank' | 'fbr'>('bank');
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
@@ -151,6 +155,23 @@ export default function SettingsScreen() {
   const handleSelectModel = async (id: ProviderId, model: string) => {
     setModels((prev) => ({ ...prev, [id]: model }));
     await setProviderModel(id, model);
+  };
+
+  const handleCouncilCheck = async () => {
+    if (checkBusy) return;
+    setCheckBusy(true);
+    setCheckStatuses([]);
+    try {
+      const result = await runCouncilSelfTest();
+      setCheckStatuses(result.statuses);
+      if (result.statuses.length === 0) {
+        Alert.alert('No council key', 'Add a key above, then run the check again.');
+      }
+    } catch {
+      Alert.alert('Council check could not run', 'Try again after saving a key.');
+    } finally {
+      setCheckBusy(false);
+    }
   };
 
   const buildImportReport = (): ImportReport =>
@@ -346,6 +367,34 @@ export default function SettingsScreen() {
           {saveButton('Save', () => handleSaveKey('gemini'))}
         </View>
         {keys.gemini?.saved && saveButton('Clear Gemini key', () => handleClearKey('gemini'), true)}
+
+        <View style={styles.checkBlock}>
+          <Text style={styles.label}>Council check</Text>
+          <Text style={styles.hint}>
+            Sends one tiny "Reply OK" through each provider on this phone's network — 15 seconds total. Nothing from your ledger is sent.
+          </Text>
+          <Button
+            label={checkBusy ? 'Checking…' : 'Run council check'}
+            onPress={handleCouncilCheck}
+            variant="secondary"
+            size="sm"
+            disabled={checkBusy}
+            style={styles.rowButton}
+          />
+          {checkStatuses.length > 0 && (
+            <View style={styles.checkRow}>
+              {checkStatuses.map((status) => (
+                <Chip
+                  key={status.provider}
+                  label={status.chip}
+                  selected={status.ok}
+                  tone={status.ok ? 'neutral' : 'danger'}
+                  style={styles.checkChip}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
         <Text style={styles.deferNote}>Talk anonymously; the app still never gives advice.</Text>
       </Card>
@@ -583,6 +632,14 @@ const styles = StyleSheet.create({
   rowButton: { marginBottom: 0 },
   modelRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
   modelChip: { marginBottom: spacing.sm },
+  checkBlock: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+  },
+  checkRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  checkChip: { marginBottom: spacing.sm },
   stackButton: { marginTop: spacing.sm },
   importModeRow: { flexDirection: 'row', marginBottom: spacing.sm },
   pasteInput: { minHeight: 96, textAlignVertical: 'top' },

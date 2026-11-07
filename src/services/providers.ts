@@ -6,6 +6,10 @@ export interface ProviderConfig {
   signupNote: string;
   defaultModel: string;
   models: { label: string; value: string }[];
+  // Ordered ids the ladder retries inside this provider when the provider
+  // answers "model not found" (404-class). A different failure — 429, 5xx,
+  // blocked — leaves the provider instead of burning the lap on another model.
+  modelCandidates: string[];
 }
 
 // Model ids are kept to ones a live call has answered for, or that the founder
@@ -22,6 +26,7 @@ export const PROVIDERS: ProviderConfig[] = [
       { label: 'Llama 3.3 70B (free tier)', value: 'llama-3.3-70b-versatile' },
       { label: 'Llama 3.1 8B (free tier, fastest)', value: 'llama-3.1-8b-instant' },
     ],
+    modelCandidates: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
   },
   {
     id: 'gemini',
@@ -33,6 +38,7 @@ export const PROVIDERS: ProviderConfig[] = [
       { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
       { label: 'Gemini 3.1 Flash Lite (fastest)', value: 'gemini-3.1-flash-lite' },
     ],
+    modelCandidates: ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'],
   },
   {
     id: 'openrouter',
@@ -44,6 +50,12 @@ export const PROVIDERS: ProviderConfig[] = [
       { label: 'DeepSeek V4 (free)', value: 'deepseek/deepseek-chat-v3:free' },
       { label: 'Kimi K2 (fallback)', value: 'moonshotai/kimi-k2' },
       { label: 'GLM (fallback)', value: 'z-ai/glm-4.6' },
+    ],
+    modelCandidates: [
+      'deepseek/deepseek-v4-flash',
+      'deepseek/deepseek-chat-v3:free',
+      'moonshotai/kimi-k2',
+      'z-ai/glm-4.6',
     ],
   },
 ];
@@ -58,6 +70,14 @@ export function providerById(id: ProviderId): ProviderConfig {
   const found = PROVIDERS.find((p) => p.id === id);
   if (!found) throw new Error(`Unknown provider: ${id}`);
   return found;
+}
+
+// The user's selected model leads its own provider's ladder, then the pinned
+// candidates follow. De-duplicated so a selected id is never attempted twice.
+export function modelCandidatesFor(id: ProviderId, preferredModel?: string): string[] {
+  const provider = providerById(id);
+  const first = preferredModel?.trim() || provider.defaultModel;
+  return [first, ...provider.modelCandidates.filter((model) => model !== first)];
 }
 
 export interface ConfiguredProvider {
