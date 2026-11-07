@@ -95,7 +95,7 @@ test('fee grid: the Costs tab sits immediately after Directory', () => {
   assert.match(NAV_SOURCE, /^\s*Costs: \($/m, 'Costs tab icon is not registered');
 });
 
-test('fee grid: versionCode 12 is synced across both config sources', () => {
-  assert.match(readFileSync('app.json', 'utf8'), /"versionCode": 12/);
-  assert.match(readFileSync('android/app/build.gradle', 'utf8'), /versionCode 12/);
+test('fee grid: versionCode 13 is synced across both config sources', () => {
+  assert.match(readFileSync('app.json', 'utf8'), /"versionCode": 13/);
+  assert.match(readFileSync('android/app/build.gradle', 'utf8'), /versionCode 13/);
 });

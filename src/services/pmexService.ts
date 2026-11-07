@@ -233,7 +233,7 @@ async function writeStoredCache(entry: PmexCacheEntry): Promise<void> {
 
 // Two attempts at most: one POST plus one courtesy retry. The endpoint has no
 // published rate-limit policy, so it is treated as courtesy-limited.
-async function fetchPmexBoard(): Promise<PmexRow[]> {
+async function fetchPmexBoardFromFeed(): Promise<PmexRow[]> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < PMEX_MAX_ATTEMPTS; attempt++) {
@@ -266,25 +266,36 @@ async function fetchPmexBoard(): Promise<PmexRow[]> {
   throw lastError instanceof PmexError ? lastError : new PmexError();
 }
 
-// One board poll feeds both cards. A failed poll may serve an unexpired 15-minute
-// cache, but a cache miss is an explicit `pmex-unreachable` — never a fake number.
-export async function fetchPmexQuote(
-  usdPkr: number | null,
-  deps: PmexDeps = {}
-): Promise<PmexResult> {
+// One board poll feeds the strip cards and the searchable board. A failed poll
+// may serve an unexpired 15-minute cache, but a cache miss is an explicit
+// `pmex-unreachable` — never a fake number.
+export interface PmexBoardResult {
+  rows: PmexRow[];
+  cached: boolean;
+}
+
+export async function fetchPmexBoard(deps: PmexDeps = {}): Promise<PmexBoardResult> {
   const now = deps.now ?? Date.now();
   const readCache = deps.readCache ?? readStoredCache;
   const writeCache = deps.writeCache ?? writeStoredCache;
   const cached = await readCache(now).catch(() => null);
 
   try {
-    const rows = await (deps.fetchBoard ?? fetchPmexBoard)();
+    const rows = await (deps.fetchBoard ?? fetchPmexBoardFromFeed)();
     await writeCache({ t: now, rows }).catch(() => undefined);
-    return { quote: buildPmexQuote(rows, usdPkr), cached: false };
+    return { rows, cached: false };
   } catch {
     if (cached) {
-      return { quote: buildPmexQuote(cached.rows, usdPkr), cached: true };
+      return { rows: cached.rows, cached: true };
     }
     throw new PmexError();
   }
+}
+
+export async function fetchPmexQuote(
+  usdPkr: number | null,
+  deps: PmexDeps = {}
+): Promise<PmexResult> {
+  const board = await fetchPmexBoard(deps);
+  return { quote: buildPmexQuote(board.rows, usdPkr), cached: board.cached };
 }

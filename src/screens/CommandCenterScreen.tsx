@@ -1,10 +1,40 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  RefreshControl,
+  TextInput,
+  useWindowDimensions,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchGlobalPropertyQuote, fetchOutlookQuotes } from '../services/globalMarkets';
+import {
+  fetchGlobalPropertyQuote,
+  fetchOutlookQuotes,
+  formatChangePct,
+  formatOutlookNumber,
+} from '../services/globalMarkets';
 import type { InstrumentQuote } from '../services/globalMarkets';
-import { fetchPmexQuote } from '../services/pmexService';
+import { buildPmexQuote, fetchPmexBoard } from '../services/pmexService';
 import type { PmexQuote } from '../services/pmexService';
+import {
+  PMEX_BOARD_EMPTY,
+  PMEX_BOARD_OFFLINE,
+  PMEX_FILTERS,
+  buildPmexAssets,
+  visiblePmexAssets,
+} from '../utils/pmexBoard';
+import type { PmexAsset, PmexFilter } from '../utils/pmexBoard';
+import { COMPARE_SERIES, fetchCompareSeries } from '../services/compareChart';
+import {
+  COMPARE_WINDOWS,
+  DEFAULT_COMPARE_WINDOW,
+  buildCompareSeries,
+} from '../utils/compareChart';
+import type { CompareWindow, RawCompareSeries } from '../utils/compareChart';
+import { CompareChart } from '../components/CompareChart';
 import { COUNCIL_BUSY_MESSAGE, hasAnyProvider } from '../services/llmService';
 import {
   COUNCIL_LIVE_CHIP,
@@ -82,6 +112,13 @@ export default function CommandCenterScreen() {
   const [pmex, setPmex] = useState<PmexQuote | null>(null);
   const [pmexOffline, setPmexOffline] = useState(false);
   const [property, setProperty] = useState<InstrumentQuote | null>(null);
+  const [pmexAssets, setPmexAssets] = useState<PmexAsset[]>([]);
+  const [pmexQuery, setPmexQuery] = useState('');
+  const [pmexFilter, setPmexFilter] = useState<PmexFilter>('All');
+  const [compareWindow, setCompareWindow] = useState<CompareWindow>(DEFAULT_COMPARE_WINDOW);
+  const [compareRaw, setCompareRaw] = useState<RawCompareSeries[]>([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
 
   const load = useCallback(async () => {
     const result = await fetchOutlookQuotes();
@@ -91,12 +128,19 @@ export default function CommandCenterScreen() {
     // PMEX and the global property card both convert with the SAME snapshot's
     // PKR/USD — one rate read, many uses, no second FX fetch.
     const rate = pkrRateFromQuotes(result.quotes);
-    const [pmexResult, propertyQuote] = await Promise.all([
-      fetchPmexQuote(rate).catch(() => null),
+    const [board, propertyQuote] = await Promise.all([
+      fetchPmexBoard().catch(() => null),
       fetchGlobalPropertyQuote().catch(() => null),
     ]);
-    setPmex(pmexResult?.quote ?? null);
-    setPmexOffline(pmexResult === null);
+    if (board) {
+      setPmex(buildPmexQuote(board.rows, rate));
+      setPmexAssets(buildPmexAssets(board.rows, rate));
+      setPmexOffline(false);
+    } else {
+      setPmex(null);
+      setPmexAssets([]);
+      setPmexOffline(true);
+    }
     setProperty(propertyQuote);
 
     let keyed = false;
@@ -145,6 +189,34 @@ export default function CommandCenterScreen() {
     }, [load])
   );
 
+  // Each series lands on its own; the chart grows as data arrives instead of
+  // waiting for the slowest host or pretending a missing series is flat.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setCompareRaw([]);
+      setCompareLoading(true);
+      let remaining = COMPARE_SERIES.length;
+
+      COMPARE_SERIES.forEach((spec) => {
+        fetchCompareSeries(spec, compareWindow)
+          .then((series) => {
+            if (!active || series.points.length === 0) return;
+            setCompareRaw((previous) => [...previous, series]);
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            remaining -= 1;
+            if (active && remaining === 0) setCompareLoading(false);
+          });
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [compareWindow])
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
     await load().catch(() => undefined);
@@ -166,6 +238,12 @@ export default function CommandCenterScreen() {
     ...buildCommodityCards(pmex, rate, now, pmexOffline),
     buildPropertyCard(property, now),
   ];
+
+  const pmexVisible = visiblePmexAssets(pmexAssets, pmexQuery, pmexFilter);
+  const compareSeries = buildCompareSeries(compareRaw, compareWindow);
+  const compareAllFailed = !compareLoading && compareSeries.length === 0;
+  const chartWidth = Math.max(240, screenWidth - 4 * spacing.lg);
+
   const national = quotes.filter((quote) => quote.region === 'national');
   const international = quotes.filter((quote) => quote.region === 'international');
 
@@ -283,6 +361,113 @@ export default function CommandCenterScreen() {
           ))}
           {cards.length === 0 ? <Text style={styles.placeholder}>No quotes on device.</Text> : null}
         </View>
+
+        <View style={styles.secLabel}>
+          <Text style={styles.secTitle}>PMEX board</Text>
+          <Text style={styles.secHint}>
+            {pmexOffline ? 'offline' : `${pmexVisible.length}/${pmexAssets.length} contracts`}
+          </Text>
+        </View>
+
+        <Card compact>
+          <TextInput
+            style={styles.boardSearch}
+            value={pmexQuery}
+            onChangeText={setPmexQuery}
+            placeholder="Search contract or category"
+            placeholderTextColor={colors.textMuted}
+            selectionColor={colors.accent}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <View style={styles.filterRow}>
+            {PMEX_FILTERS.map((filter) => (
+              <Chip
+                key={filter}
+                label={filter}
+                selected={pmexFilter === filter}
+                onPress={() => setPmexFilter(filter)}
+                style={styles.tapChip}
+              />
+            ))}
+          </View>
+
+          {pmexOffline ? (
+            <Text style={styles.offlineText}>{PMEX_BOARD_OFFLINE}</Text>
+          ) : pmexVisible.length === 0 ? (
+            <Text style={styles.offlineText}>{PMEX_BOARD_EMPTY}</Text>
+          ) : (
+            pmexVisible.map((asset) => (
+              <View key={asset.contract} style={styles.boardRow}>
+                <View style={styles.boardTop}>
+                  <Text style={styles.boardContract}>{asset.contract}</Text>
+                  <Text style={styles.boardCategory}>{asset.category}</Text>
+                </View>
+                <View style={styles.boardMid}>
+                  <Text style={styles.boardBidAsk}>
+                    {`B ${asset.bid === null ? '—' : formatOutlookNumber(asset.bid)}   A ${
+                      asset.ask === null ? '—' : formatOutlookNumber(asset.ask)
+                    }`}
+                  </Text>
+                  <Text style={[styles.boardChange, { color: toneColor(asset.tone) }]}>
+                    {asset.changeLabel}
+                  </Text>
+                </View>
+                {asset.pkrLine ? <Text style={styles.boardPkr}>{asset.pkrLine}</Text> : null}
+                <Text style={styles.boardTime}>{asset.timeLabel}</Text>
+              </View>
+            ))
+          )}
+        </Card>
+
+        <View style={styles.secLabel}>
+          <Text style={styles.secTitle}>Compare</Text>
+          <Text style={styles.secHint}>normalized to 100</Text>
+        </View>
+
+        <Card compact>
+          <View style={styles.filterRow}>
+            {COMPARE_WINDOWS.map((windowDays) => (
+              <Chip
+                key={windowDays}
+                label={`${windowDays}D`}
+                selected={compareWindow === windowDays}
+                onPress={() => setCompareWindow(windowDays)}
+                style={styles.tapChip}
+              />
+            ))}
+          </View>
+
+          {compareAllFailed ? (
+            <Text style={styles.offlineText}>Feed unavailable — try on mobile data</Text>
+          ) : (
+            <>
+              <CompareChart series={compareSeries} width={chartWidth} height={190} />
+              <View style={styles.legendWrap}>
+                {COMPARE_SERIES.map((spec) => {
+                  const match = compareSeries.find((entry) => entry.symbol === spec.symbol);
+                  return (
+                    <View key={spec.symbol} style={styles.legendRow}>
+                      <View style={[styles.legendDot, { backgroundColor: spec.color }]} />
+                      <Text style={styles.legendLabel}>{spec.label}</Text>
+                      {match ? (
+                        <Text style={styles.legendStats}>
+                          {`${formatOutlookNumber(match.first)} → ${formatOutlookNumber(
+                            match.last
+                          )}  ${formatChangePct(match.netPct)}`}
+                        </Text>
+                      ) : (
+                        <Text style={styles.legendMissing}>
+                          {compareLoading ? 'loading…' : 'unavailable'}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+        </Card>
 
         <View style={styles.secLabel}>
           <Text style={styles.secTitle}>Council note</Text>
@@ -651,6 +836,80 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontFamily: fonts.regular,
   },
+
+  boardSearch: {
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.textPrimary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    minHeight: 44,
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    marginBottom: spacing.sm,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  tapChip: {
+    minHeight: 44,
+    justifyContent: 'center',
+    marginRight: 0,
+  },
+  offlineText: {
+    color: colors.textSecondary,
+    fontSize: 12.5,
+    lineHeight: 19,
+    fontFamily: fonts.regular,
+    paddingVertical: spacing.sm,
+  },
+  boardRow: {
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  boardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  boardContract: {
+    color: colors.textPrimary,
+    fontFamily: MONO_FONT,
+    fontSize: 12.5,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  boardCategory: {
+    color: colors.textSecondary,
+    fontFamily: MONO_FONT,
+    fontSize: 9.5,
+    letterSpacing: 0.6,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  boardMid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 3,
+  },
+  boardBidAsk: { color: colors.textSecondary, fontFamily: MONO_FONT, fontSize: 11.5 },
+  boardChange: { fontFamily: MONO_FONT, fontSize: 12, fontWeight: '700' },
+  boardPkr: { color: colors.textMuted, fontFamily: MONO_FONT, fontSize: 9.5, marginTop: 2 },
+  boardTime: { color: colors.textMuted, fontFamily: MONO_FONT, fontSize: 8.5, marginTop: 2 },
+
+  legendWrap: { marginTop: spacing.sm },
+  legendRow: { flexDirection: 'row', alignItems: 'center', minHeight: 32 },
+  legendDot: { width: 8, height: 8, borderRadius: radius.full, marginRight: spacing.sm },
+  legendLabel: { color: colors.textPrimary, fontSize: 11.5, fontFamily: fonts.bold, flex: 1 },
+  legendStats: { color: colors.textSecondary, fontFamily: MONO_FONT, fontSize: 10.5 },
+  legendMissing: { color: colors.textMuted, fontFamily: MONO_FONT, fontSize: 10.5 },
 
   feeds: {
     borderWidth: 1,

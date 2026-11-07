@@ -45,6 +45,9 @@ export const colors = {
 
   // Misc
   white: '#e7ecf0',
+
+  // Chart series (local vs global compare) — five distinct hues on the dark ground
+  series: ['#3add9e', '#67aaed', '#ddb049', '#ff696d', '#a78bfa'],
 } as const;
 
 export type ColorKey = keyof typeof colors;
