@@ -72,8 +72,15 @@ export default function DashboardScreen() {
   const currentCorpus = netWorth;
   // No expense data means no target: passing a placeholder here used to produce
   // a Rs 300 "FIRE Achieved!" verdict for a brand-new user.
-  const fire = calculateFIRE(monthlyExpenses, currentCorpus, Math.max(currentSavings, 0), 10);
-  const effectiveFireTarget = fireTarget > 0 ? fireTarget : fire.targetCorpus;
+  const autoFire = calculateFIRE(monthlyExpenses, currentCorpus, Math.max(currentSavings, 0), 10);
+  // One target wins. A target saved in Settings drives the whole card —
+  // corpus, percentage and verdict — and only when none is saved does the
+  // auto-calculated target apply. Mixing the two let the card print
+  // "66.7% of target" beside "FIRE Achieved!".
+  const fire = fireTarget > 0
+    ? calculateFIRE(monthlyExpenses, currentCorpus, Math.max(currentSavings, 0), 10, 0, 4, fireTarget)
+    : autoFire;
+  const effectiveFireTarget = fireTarget > 0 ? fireTarget : autoFire.targetCorpus;
   // A target exists two ways: an explicit save in Settings, or auto-calculated
   // from monthly expenses. Honouring only the second hid a number the user
   // entered themselves, so either source is enough to show real math.

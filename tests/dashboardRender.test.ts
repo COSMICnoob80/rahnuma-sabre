@@ -10,6 +10,7 @@
 import { renderScreen, renderedText, loadDb, resetModules, flush } from './aux/renderHarness.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { todayLocal } from '../src/utils/calculators.ts';
 
 const DASHBOARD = 'src/screens/DashboardScreen.tsx';
 const HONEST_FIRE_LINE = 'Add your monthly expenses in Settings to see your FIRE math';
@@ -18,6 +19,22 @@ function afterLabel(strings, label) {
   const index = strings.indexOf(label);
   assert.notEqual(index, -1, `expected the "${label}" card to be rendered`);
   return strings.slice(index + 1);
+}
+
+/** JSX interpolation splits "Rs. a / Rs. b" into three text nodes. */
+function fireFraction(strings) {
+  for (let i = 0; i < strings.length - 2; i += 1) {
+    if (/^Rs\. [\d,]+$/.test(strings[i]) && strings[i + 1] === ' / ' && /^Rs\. [\d,]+$/.test(strings[i + 2])) {
+      return `${strings[i]} / ${strings[i + 2]}`;
+    }
+  }
+  return null;
+}
+
+/** "{n}% of target" likewise renders as two nodes: the number, then the tail. */
+function pctOfTarget(strings) {
+  const index = strings.indexOf('% of target');
+  return index > 0 ? `${strings[index - 1]}% of target` : null;
 }
 
 function seedHoldingsAndScalars(db) {
@@ -112,4 +129,43 @@ test('Dashboard, explicit FIRE target: an entered target is shown, never replace
     !strings.some((s) => s.includes('Cannot reach FIRE')),
     'a missing expense series is not the same as an unreachable target'
   );
+});
+
+test('Dashboard, explicit FIRE target: percentage and verdict use the same target', async () => {
+  resetModules();
+  const db = loadDb();
+  // The audit's reproduction: corpus 20M, explicit target 30M, expenses
+  // 50k/month (auto target 15M). r14 printed "66.7% of target · FIRE Achieved!".
+  await db.setSetting('cash', '20000000');
+  await db.setSetting('fire_target', '30000000');
+  await db.addExpense({ amount: 50000, category: 'Living', date: todayLocal() });
+
+  const renderer = renderScreen(DASHBOARD);
+  await flush(renderer);
+  const strings = renderedText(renderer);
+
+  assert.equal(fireFraction(strings), 'Rs. 20,000,000 / Rs. 30,000,000', 'the fraction names the explicit target');
+  assert.equal(pctOfTarget(strings), '66.7% of target', 'the percentage uses the explicit target');
+  assert.ok(!strings.includes('FIRE Achieved!'), 'the auto target must not crown a corpus below the saved target');
+  assert.ok(
+    strings.some((s) => /^\d+ years to FIRE$/.test(s)),
+    'the years line is projected to the explicit target too'
+  );
+});
+
+test('Dashboard, auto FIRE target: achieved verdict and 100% agree when no target is saved', async () => {
+  resetModules();
+  const db = loadDb();
+  // Same corpus and expenses, no explicit target: the auto target is 15M, so
+  // the single consistent answer is 100% and FIRE Achieved!.
+  await db.setSetting('cash', '20000000');
+  await db.addExpense({ amount: 50000, category: 'Living', date: todayLocal() });
+
+  const renderer = renderScreen(DASHBOARD);
+  await flush(renderer);
+  const strings = renderedText(renderer);
+
+  assert.equal(fireFraction(strings), 'Rs. 20,000,000 / Rs. 15,000,000', 'the fraction names the auto target');
+  assert.equal(pctOfTarget(strings), '100.0% of target', 'the percentage is the auto target percentage');
+  assert.ok(strings.includes('FIRE Achieved!'), 'crossing the auto target is achieved');
 });

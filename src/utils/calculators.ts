@@ -204,7 +204,8 @@ export function calculateFIRE(
   monthlySavings: number,
   expectedReturn: number,
   inflationRate = 0,
-  withdrawalRate = 4
+  withdrawalRate = 4,
+  targetOverride?: number
 ): FireResult {
   const realReturn = inflationRate > 0
     ? ((1 + expectedReturn / 100) / (1 + inflationRate / 100) - 1) * 100
@@ -215,7 +216,13 @@ export function calculateFIRE(
   }
 
   const annualExpenses = monthlyExpenses * 12;
-  const targetCorpus = annualExpenses / (withdrawalRate / 100);
+  // An explicit target wins for every number this returns — corpus, progress
+  // and years — so a caller can never print a percentage against one target
+  // beside a verdict computed against another.
+  const targetCorpus =
+    targetOverride !== undefined && Number.isFinite(targetOverride) && targetOverride > 0
+      ? targetOverride
+      : annualExpenses / (withdrawalRate / 100);
   const progressPct = Math.min((currentSavings / targetCorpus) * 100, 100);
 
   if (currentSavings >= targetCorpus) {

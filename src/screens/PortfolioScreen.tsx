@@ -276,8 +276,11 @@ export default function PortfolioScreen() {
           const gainPct = costBasis > 0 ? (gain / costBasis) * 100 : 0;
           const freshness = priceFreshness(h.last_fetched);
           const isEtf = getSector(h.ticker) === 'ETF';
-          const navQuote = isEtf ? etfNav[h.ticker.toUpperCase()] : undefined;
-          const navLine = isEtf ? buildEtfNavLine(navQuote?.nav ?? null, currentPrice) : null;
+          const navValue = isEtf ? etfNav[h.ticker.toUpperCase()]?.nav ?? null : null;
+          // A gap is a market fact only when there is a live quote. The buy
+          // price is not a price, so an unpriced holding shows the NAV alone
+          // instead of a fabricated gap against what it was bought for.
+          const navLine = isEtf ? buildEtfNavLine(navValue, h.current_price) : null;
           return (
             <TouchableOpacity key={h.id} style={styles.holdingItem} onLongPress={() => h.id && handleDelete(h.id)}>
               <View style={styles.holdingLeft}>
@@ -292,6 +295,8 @@ export default function PortfolioScreen() {
                     <Text style={[styles.etfNavLine, navLine.tone === 'pos' && styles.etfNavAbove, navLine.tone === 'neg' && styles.etfNavBelow]}>
                       {navLine.text}
                     </Text>
+                  ) : navValue !== null ? (
+                    <Text style={styles.etfNavLine}>{`NAV ${navValue.toFixed(2)}`}</Text>
                   ) : (
                     <Text style={styles.etfNavMissing}>{NAV_UNAVAILABLE}</Text>
                   )

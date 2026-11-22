@@ -125,6 +125,22 @@ test('FIRE: zero expenses is missing data, never a fabricated target', () => {
   assert.equal(calculateFIRE(100000, 50_000_000, 0, 10).hasExpenseData, true);
 });
 
+test('FIRE: an explicit target overrides the derived target for every number', () => {
+  const auto = calculateFIRE(50000, 20_000_000, 0, 10);
+  assert.equal(auto.targetCorpus, 15_000_000);
+  assert.equal(auto.yearsToFire, 0);
+  assert.equal(auto.progressPct, 100);
+
+  const explicit = calculateFIRE(50000, 20_000_000, 0, 10, 0, 4, 30_000_000);
+  assert.equal(explicit.targetCorpus, 30_000_000);
+  assert.ok(explicit.progressPct > 66.6 && explicit.progressPct < 66.7);
+  assert.ok(explicit.yearsToFire > 0);
+
+  const atExplicit = calculateFIRE(50000, 30_000_000, 0, 10, 0, 4, 30_000_000);
+  assert.equal(atExplicit.yearsToFire, 0);
+  assert.equal(atExplicit.progressPct, 100);
+});
+
 // ---------- SIP / ROI / devaluation ----------
 
 test('SIP: zero return means value equals contributions', () => {
