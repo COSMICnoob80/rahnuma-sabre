@@ -95,7 +95,13 @@ test('fee grid: the Costs tab sits immediately after Directory', () => {
   assert.match(NAV_SOURCE, /^\s*Costs: \($/m, 'Costs tab icon is not registered');
 });
 
-test('fee grid: versionCode 13 is synced across both config sources', () => {
-  assert.match(readFileSync('app.json', 'utf8'), /"versionCode": 13/);
-  assert.match(readFileSync('android/app/build.gradle', 'utf8'), /versionCode 13/);
+test('fee grid: versionCode is synced across both config sources', () => {
+  // Sync, not a literal: app.json and build.gradle must never drift, but a
+  // legitimate version bump (this lane ships 14) must not break this test.
+  const appCode = /"versionCode":\s*(\d+)/.exec(readFileSync('app.json', 'utf8'))?.[1];
+  const gradleCode = /versionCode\s+(\d+)/.exec(readFileSync('android/app/build.gradle', 'utf8'))?.[1];
+  assert.ok(appCode, 'app.json carries no versionCode');
+  assert.ok(gradleCode, 'build.gradle carries no versionCode');
+  assert.equal(appCode, gradleCode, 'versionCode drifted between app.json and build.gradle');
+  assert.ok(Number(appCode) >= 13, `versionCode went backwards: ${appCode}`);
 });

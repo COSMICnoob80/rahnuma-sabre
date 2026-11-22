@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, Platform
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getHoldings, addHolding, deleteHolding } from '../database/db';
@@ -9,6 +9,8 @@ import { formatPKR } from '../utils/calculators';
 import { refreshAllPrices, priceFreshness } from '../services/psxService';
 import { findSymbol, searchSymbols } from '../services/psxSymbols';
 import type { PsxSymbol } from '../services/psxSymbols';
+import { fetchEtfNavMap, buildEtfNavLine, NAV_UNAVAILABLE, NAV_GAP_CAPTION } from '../services/navService';
+import type { EtfNavQuote } from '../services/navService';
 import { computePortfolioXray, XRAY_HEADER, XRAY_SCOPE } from '../utils/portfolioXray';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
@@ -19,6 +21,8 @@ import { fonts } from '../utils/fonts';
 function getSector(ticker: string): string {
   return findSymbol(ticker)?.sector ?? 'Other';
 }
+
+const MONO_FONT = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 export default function PortfolioScreen() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -32,10 +36,20 @@ export default function PortfolioScreen() {
   const [tickerOpen, setTickerOpen] = useState(false);
   const [showXray, setShowXray] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [etfNav, setEtfNav] = useState<Record<string, EtfNavQuote>>({});
 
   const load = useCallback(async () => {
-    setHoldings(await getHoldings());
+    const rows = await getHoldings();
+    setHoldings(rows);
     setLoading(false);
+
+    // ETF NAV vs price: the fund's own published NAV for ETF holdings, one
+    // batched fetch per load. A symbol with no published NAV is simply absent
+    // from the map, so its row says "unavailable" instead of printing a number.
+    const etfTickers = rows
+      .map((row) => row.ticker)
+      .filter((ticker) => findSymbol(ticker)?.sector === 'ETF');
+    setEtfNav(etfTickers.length > 0 ? await fetchEtfNavMap(etfTickers) : {});
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -261,6 +275,9 @@ export default function PortfolioScreen() {
           const gain = currentValue - costBasis;
           const gainPct = costBasis > 0 ? (gain / costBasis) * 100 : 0;
           const freshness = priceFreshness(h.last_fetched);
+          const isEtf = getSector(h.ticker) === 'ETF';
+          const navQuote = isEtf ? etfNav[h.ticker.toUpperCase()] : undefined;
+          const navLine = isEtf ? buildEtfNavLine(navQuote?.nav ?? null, currentPrice) : null;
           return (
             <TouchableOpacity key={h.id} style={styles.holdingItem} onLongPress={() => h.id && handleDelete(h.id)}>
               <View style={styles.holdingLeft}>
@@ -270,6 +287,15 @@ export default function PortfolioScreen() {
                   {freshness.label}
                   {!h.current_price ? ' · showing buy price' : ''}
                 </Text>
+                {isEtf && (
+                  navLine ? (
+                    <Text style={[styles.etfNavLine, navLine.tone === 'pos' && styles.etfNavAbove, navLine.tone === 'neg' && styles.etfNavBelow]}>
+                      {navLine.text}
+                    </Text>
+                  ) : (
+                    <Text style={styles.etfNavMissing}>{NAV_UNAVAILABLE}</Text>
+                  )
+                )}
               </View>
               <View style={styles.holdingRight}>
                 <Text style={typography.bodyStrong}>{formatPKR(currentValue)}</Text>
@@ -280,6 +306,9 @@ export default function PortfolioScreen() {
             </TouchableOpacity>
           );
         })}
+        {holdings.some((h) => getSector(h.ticker) === 'ETF') && (
+          <Text style={styles.etfNavCaption}>{NAV_GAP_CAPTION}</Text>
+        )}
       </Card>
 
       {/* Portfolio X-ray — composition only, provably from the ledger */}
@@ -387,6 +416,13 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 12, fontFamily: fonts.regular, marginTop: -spacing.xs, marginBottom: spacing.sm },
   freshnessLabel: { color: colors.success, fontSize: 10, marginTop: 3, fontFamily: fonts.regular },
   freshnessStale: { color: colors.warning },
+  // ETF NAV vs price. Mono, small, signed. The ± is tinted with neutral info /
+  // warning tones only — never the success green: a gap is a fact, not a call.
+  etfNavLine: { color: colors.textSecondary, fontSize: 11, marginTop: 3, fontFamily: MONO_FONT },
+  etfNavAbove: { color: colors.info },
+  etfNavBelow: { color: colors.warning },
+  etfNavMissing: { color: colors.textMuted, fontSize: 11, marginTop: 3, fontFamily: MONO_FONT },
+  etfNavCaption: { color: colors.textMuted, fontSize: 10.5, marginTop: spacing.sm, fontFamily: fonts.regular },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   holdingItem: {
     flexDirection: 'row',
