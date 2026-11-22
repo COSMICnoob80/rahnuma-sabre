@@ -92,7 +92,7 @@ Without any key, the dashboard, portfolio, budget, briefing and every calculator
 only the advisory chat is unavailable.
 
 ```bash
-npm test           # 256 tests incl. real Dashboard and Portfolio renders (Node's built-in runner)
+npm test           # 258 tests incl. real Dashboard and Portfolio renders (Node's built-in runner)
 npm run ts:check   # strict TypeScript, clean
 npx expo export --platform android   # verify a production JS bundle builds
 ```
@@ -163,7 +163,7 @@ Rahnuma is an **educational tool**. It provides financial analysis and education
 
 ## License
 
-*TBD — License will be determined before public release.*
+*MIT — see [LICENSE](./LICENSE).*
 
 ---
 
