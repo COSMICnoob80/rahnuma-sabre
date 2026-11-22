@@ -185,6 +185,19 @@ export function calculateDevaluation(
   };
 }
 
+export interface FireResult {
+  targetCorpus: number;
+  yearsToFire: number;
+  progressPct: number;
+  realReturn: number;
+  /**
+   * False when there is no expense data to derive a target from. Zero monthly
+   * expenses means "unknown", never "Rs 0 spent" — treating it as data would
+   * fabricate a tiny target and report FIRE as achieved.
+   */
+  hasExpenseData: boolean;
+}
+
 export function calculateFIRE(
   monthlyExpenses: number,
   currentSavings: number,
@@ -192,17 +205,21 @@ export function calculateFIRE(
   expectedReturn: number,
   inflationRate = 0,
   withdrawalRate = 4
-): { targetCorpus: number; yearsToFire: number; progressPct: number; realReturn: number } {
-  const annualExpenses = monthlyExpenses * 12;
-  const targetCorpus = annualExpenses / (withdrawalRate / 100);
-  const progressPct = Math.min((currentSavings / targetCorpus) * 100, 100);
-
+): FireResult {
   const realReturn = inflationRate > 0
     ? ((1 + expectedReturn / 100) / (1 + inflationRate / 100) - 1) * 100
     : expectedReturn;
 
+  if (!Number.isFinite(monthlyExpenses) || monthlyExpenses <= 0) {
+    return { targetCorpus: 0, yearsToFire: -1, progressPct: 0, realReturn, hasExpenseData: false };
+  }
+
+  const annualExpenses = monthlyExpenses * 12;
+  const targetCorpus = annualExpenses / (withdrawalRate / 100);
+  const progressPct = Math.min((currentSavings / targetCorpus) * 100, 100);
+
   if (currentSavings >= targetCorpus) {
-    return { targetCorpus, yearsToFire: 0, progressPct: 100, realReturn };
+    return { targetCorpus, yearsToFire: 0, progressPct: 100, realReturn, hasExpenseData: true };
   }
 
   const monthlyRate = realReturn / 100 / 12;
@@ -222,6 +239,7 @@ export function calculateFIRE(
     yearsToFire: years >= maxYears ? -1 : years,
     progressPct,
     realReturn,
+    hasExpenseData: true,
   };
 }
 

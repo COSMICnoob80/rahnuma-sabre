@@ -109,6 +109,22 @@ test('FIRE: already at target reports zero years and full progress', () => {
   assert.equal(result.progressPct, 100);
 });
 
+test('FIRE: zero expenses is missing data, never a fabricated target', () => {
+  // The r13 Dashboard passed `monthlyExpenses || 1`, which turned "no expense
+  // data" into Rs 1/month -> a Rs 300 target -> "FIRE Achieved!" for anyone
+  // holding more than Rs 300. Zero must mean unknown, not Rs 0 spent.
+  for (const expenses of [0, -5, Number.NaN]) {
+    const result = calculateFIRE(expenses, 250_000, 0, 10);
+    assert.equal(result.hasExpenseData, false);
+    assert.equal(result.targetCorpus, 0);
+    assert.equal(result.progressPct, 0);
+    assert.notEqual(result.yearsToFire, 0);
+  }
+
+  assert.equal(calculateFIRE(1, 250_000, 0, 10).hasExpenseData, true);
+  assert.equal(calculateFIRE(100000, 50_000_000, 0, 10).hasExpenseData, true);
+});
+
 // ---------- SIP / ROI / devaluation ----------
 
 test('SIP: zero return means value equals contributions', () => {

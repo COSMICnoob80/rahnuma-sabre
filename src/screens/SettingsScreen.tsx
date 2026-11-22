@@ -239,8 +239,9 @@ export default function SettingsScreen() {
 
     const importedAt = new Date().toISOString();
     const assetRows = report.rows.filter((row) => row.kind !== 'cash' && row.kind !== 'bank');
+    let savedCount = 0;
     for (const row of assetRows) {
-      await addAsset({
+      const id = await addAsset({
         kind: row.kind,
         label: row.label,
         amount_pkr: row.amountPKR,
@@ -248,6 +249,7 @@ export default function SettingsScreen() {
         imported_at: importedAt,
         raw_line: row.rawLine,
       });
+      if (id > 0) savedCount += 1;
     }
 
     setCashAmount(String(nextCash));
@@ -255,7 +257,7 @@ export default function SettingsScreen() {
     setImportText('');
     Alert.alert(
       'Import complete',
-      `${report.rows.length} row(s) read, ${assetRows.length} position(s) saved. Cash balance updated to PKR ${nextCash.toLocaleString('en-PK')}.`
+      `${report.rows.length} row(s) read, ${savedCount} position(s) saved. Cash balance updated to PKR ${nextCash.toLocaleString('en-PK')}.`
     );
   };
 

@@ -3,8 +3,9 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { getHoldings, getTotalIncomeByMonth, getExpenseTotalByMonth, getSetting } from '../database/db';
+import { getHoldings, getTotalIncomeByMonth, getExpenseTotalByMonth, getSetting, getAssets } from '../database/db';
 import { Holding } from '../types';
+import type { AssetRecord } from '../database/db';
 import { calculateFIRE, formatPKR } from '../utils/calculators';
 import { colors } from '../theme/colors';
 import { spacing, radius } from '../theme/spacing';
@@ -22,6 +23,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [cash, setCash] = useState(0);
   const [property, setProperty] = useState(0);
+  const [assets, setAssets] = useState<AssetRecord[]>([]);
 
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -41,6 +43,10 @@ export default function DashboardScreen() {
     setCash(c ? parseFloat(c) : 0);
     const p = await getSetting('property');
     setProperty(p ? parseFloat(p) : 0);
+    // Imported non-cash rows (gold, property, funds) live in their own table;
+    // without this read the import confirmation was true of no screen.
+    const a = await getAssets();
+    setAssets(a);
     setLoading(false);
   }, [month]);
 
@@ -56,16 +62,23 @@ export default function DashboardScreen() {
   const portfolioCost = holdings.reduce((sum, h) => sum + h.avg_buy_price * h.quantity, 0);
   const portfolioGain = portfolioValue - portfolioCost;
   const portfolioGainPct = portfolioCost > 0 ? (portfolioGain / portfolioCost) * 100 : 0;
-  const netWorth = portfolioValue + cash + property;
+  const importedAssetsValue = assets.reduce((sum, a) => sum + (a.amount_pkr || 0), 0);
+  const netWorth = portfolioValue + cash + property + importedAssetsValue;
   const savingsRate = totalIncome > 0 ? ((totalIncome - monthlyExpenses) / totalIncome) * 100 : 0;
   const currentSavings = totalIncome - monthlyExpenses;
 
   // Corpus counts everything the user actually owns, so FIRE progress reflects
   // real net worth instead of a value that was never populated.
-  const currentCorpus = portfolioValue + cash + property;
-  const fire = calculateFIRE(monthlyExpenses || 1, currentCorpus, Math.max(currentSavings, 0), 10);
+  const currentCorpus = netWorth;
+  // No expense data means no target: passing a placeholder here used to produce
+  // a Rs 300 "FIRE Achieved!" verdict for a brand-new user.
+  const fire = calculateFIRE(monthlyExpenses, currentCorpus, Math.max(currentSavings, 0), 10);
   const effectiveFireTarget = fireTarget > 0 ? fireTarget : fire.targetCorpus;
-  const fireProgressPct = effectiveFireTarget > 0
+  // A target exists two ways: an explicit save in Settings, or auto-calculated
+  // from monthly expenses. Honouring only the second hid a number the user
+  // entered themselves, so either source is enough to show real math.
+  const hasFireMath = fire.hasExpenseData || fireTarget > 0;
+  const fireProgressPct = hasFireMath && effectiveFireTarget > 0
     ? Math.min((currentCorpus / effectiveFireTarget) * 100, 100)
     : 0;
 
@@ -108,6 +121,9 @@ export default function DashboardScreen() {
           <Text style={typography.caption}>Cash: {formatPKR(cash)}</Text>
         </View>
         {property > 0 && <Text style={typography.caption}>Property: {formatPKR(property)}</Text>}
+        {importedAssetsValue > 0 && (
+          <Text style={typography.caption}>Other assets: {formatPKR(importedAssetsValue)}</Text>
+        )}
       </Card>
 
       {/* Savings Rate */}
@@ -135,18 +151,32 @@ export default function DashboardScreen() {
       {/* FIRE Progress */}
       <Card>
         <Text style={typography.sectionTitle}>FIRE Progress</Text>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${fireProgressPct}%` }]} />
-        </View>
-        <Text style={typography.caption}>
-          {formatPKR(currentCorpus)} / {formatPKR(effectiveFireTarget)}
-        </Text>
-        <Text style={typography.caption}>
-          {fireProgressPct.toFixed(1)}% of target
-        </Text>
-        <Text style={typography.caption}>
-          {fire.yearsToFire > 0 ? `${fire.yearsToFire} years to FIRE` : fire.yearsToFire === 0 ? 'FIRE Achieved!' : 'Cannot reach FIRE at current rate'}
-        </Text>
+        {hasFireMath ? (
+          <>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${fireProgressPct}%` }]} />
+            </View>
+            <Text style={typography.caption}>
+              {formatPKR(currentCorpus)} / {formatPKR(effectiveFireTarget)}
+            </Text>
+            <Text style={typography.caption}>
+              {fireProgressPct.toFixed(1)}% of target
+            </Text>
+            <Text style={typography.caption}>
+              {!fire.hasExpenseData
+                ? 'Add your monthly expenses to project years to FIRE'
+                : fire.yearsToFire > 0
+                  ? `${fire.yearsToFire} years to FIRE`
+                  : fire.yearsToFire === 0
+                    ? 'FIRE Achieved!'
+                    : 'Cannot reach FIRE at current rate'}
+            </Text>
+          </>
+        ) : (
+          <Text style={typography.caption}>
+            Add your monthly expenses in Settings to see your FIRE math
+          </Text>
+        )}
       </Card>
 
       {/* Quick Actions */}

@@ -76,12 +76,23 @@ npm start          # Expo dev server
 ```
 
 Then, inside the app, add a free AI key in **Settings → AI Providers** (Gemini and Groq both
-have free tiers). Keys are stored in SecureStore on your device — nothing ships inside the
-binary, and there is no key baked into the repo. Without a key, the dashboard, portfolio,
-budget, briefing and every calculator still work; only the advisory chat is unavailable.
+have free tiers). Keys you enter are stored in SecureStore on your device.
+
+Two things about keys, stated plainly because both are checkable:
+
+1. **Preview builds ship an embedded key.** The beta APK carries the maintainer's own
+   free-tier provider key inside the app bundle, deliberately, so the advisory chat works on
+   a fresh install with no setup. Anyone who unzips the APK can extract it — that is a known
+   and accepted trade-off for the beta, not a secret.
+2. **Your key always wins.** A key you paste in Settings is tried first; the embedded key is
+   only the last-resort fallback. Public and production builds must ship **BYOK-only** — no
+   embedded key at all.
+
+Without any key, the dashboard, portfolio, budget, briefing and every calculator still work;
+only the advisory chat is unavailable.
 
 ```bash
-npm test           # 57 unit tests (Node's built-in runner, no test dependencies)
+npm test           # 250 tests incl. real Dashboard renders (Node's built-in runner)
 npm run ts:check   # strict TypeScript, clean
 npx expo export --platform android   # verify a production JS bundle builds
 ```

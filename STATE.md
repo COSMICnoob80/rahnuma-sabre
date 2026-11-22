@@ -60,7 +60,7 @@ tells you to buy or sell.
 
 ```bash
 npm start          # Expo dev server
-npm test           # 57 unit tests, no test dependencies (Node's built-in runner)
+npm test           # 250 tests incl. real Dashboard renders (Node's built-in runner)
 npm run ts:check   # TypeScript, strict — clean
 ```
 
