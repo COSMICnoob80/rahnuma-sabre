@@ -116,7 +116,7 @@ r13 — but it is still a "states something false about their retirement" screen
   Pre-existing honest deviation, recorded in the prior audit, unchanged.
 - The WO's note about the forge beat rewording the audit doc is **correct and harmless**: `docs/AUDIT-2026-11.md` now
   says "Groq-style `gsk…`" / "provider-key prefix" instead of the literal prefix, and the repo-wide leak gate reads **0**
-  (`grep -rn "gsk_\|AIza\|sk-or-" src tests scripts docs README.md` → no matches) while the finding text survives.
+  (a grep for the three provider-key prefixes over `src tests scripts docs README.md` → no matches) while the finding text survives.
 
 ---
 
