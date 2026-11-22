@@ -92,7 +92,7 @@ Without any key, the dashboard, portfolio, budget, briefing and every calculator
 only the advisory chat is unavailable.
 
 ```bash
-npm test           # 250 tests incl. real Dashboard renders (Node's built-in runner)
+npm test           # 256 tests incl. real Dashboard and Portfolio renders (Node's built-in runner)
 npm run ts:check   # strict TypeScript, clean
 npx expo export --platform android   # verify a production JS bundle builds
 ```

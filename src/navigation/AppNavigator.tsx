@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -15,7 +15,8 @@ import BudgetScreen from '../screens/BudgetScreen';
 import CalculatorsScreen from '../screens/CalculatorsScreen';
 import AdvisoryScreen from '../screens/AdvisoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import { View, StyleSheet, StatusBar } from 'react-native';
+import MoreScreen from '../screens/MoreScreen';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fonts } from '../utils/fonts';
@@ -98,6 +99,21 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   );
 }
 
+/** The five tabs are the daily surface; everything else lives behind this. */
+function HeaderMoreButton() {
+  const navigation = useNavigation<any>();
+  return (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('More')}
+      accessibilityRole="button"
+      accessibilityLabel="More screens"
+      style={styles.moreButton}
+    >
+      <Text style={styles.moreButtonLabel}>More</Text>
+    </TouchableOpacity>
+  );
+}
+
 function TabsNavigator() {
   const insets = useSafeAreaInsets();
 
@@ -119,6 +135,7 @@ function TabsNavigator() {
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontFamily: fonts.bold },
         headerShadowVisible: false,
+        headerRight: () => <HeaderMoreButton />,
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -128,11 +145,7 @@ function TabsNavigator() {
         component={CommandCenterScreen}
         options={{ tabBarLabel: 'Command' }}
       />
-      <Tab.Screen name="Directory" component={DirectoryScreen} />
-      <Tab.Screen name="Costs" component={CostScreen} />
       <Tab.Screen name="Budget" component={BudgetScreen} />
-      <Tab.Screen name="Calculators" component={CalculatorsScreen} />
-      <Tab.Screen name="Advisory" component={AdvisoryScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
@@ -163,6 +176,19 @@ export default function AppNavigator() {
             component={OutlookScreen}
             options={{ title: 'Market outlook' }}
           />
+          <Stack.Screen name="More" component={MoreScreen} options={{ title: 'More' }} />
+          <Stack.Screen
+            name="Directory"
+            component={DirectoryScreen}
+            options={{ title: 'Advisory directory' }}
+          />
+          <Stack.Screen name="Costs" component={CostScreen} options={{ title: 'Costs' }} />
+          <Stack.Screen
+            name="Calculators"
+            component={CalculatorsScreen}
+            options={{ title: 'Calculators' }}
+          />
+          <Stack.Screen name="Advisory" component={AdvisoryScreen} options={{ title: 'Advisory' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
@@ -178,4 +204,6 @@ const styles = StyleSheet.create({
   },
   tabLabel: { fontSize: 10, fontFamily: fonts.bold, marginBottom: 4 },
   tabIcon: { alignItems: 'center', justifyContent: 'center' },
+  moreButton: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  moreButtonLabel: { color: colors.accent, fontFamily: fonts.bold, fontSize: 14 },
 });

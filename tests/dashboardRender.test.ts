@@ -169,3 +169,58 @@ test('Dashboard, auto FIRE target: achieved verdict and 100% agree when no targe
   assert.equal(pctOfTarget(strings), '100.0% of target', 'the percentage is the auto target percentage');
   assert.ok(strings.includes('FIRE Achieved!'), 'crossing the auto target is achieved');
 });
+
+test('Dashboard, first-run card: shown when there are no holdings and no imported assets', async () => {
+  resetModules();
+  loadDb();
+
+  const renderer = renderScreen(DASHBOARD);
+  await flush(renderer);
+  const strings = renderedText(renderer);
+
+  assert.ok(strings.includes('Start here'), 'the first-run card is rendered');
+  assert.ok(
+    strings.includes('Your portfolio never leaves your phone — no account, no signup, no cloud.'),
+    'the phone-only promise is stated'
+  );
+  assert.ok(
+    strings.includes('Rahnuma will never tell you to buy or sell. It restates your own plan and the price.'),
+    'the never-advises promise is stated'
+  );
+  assert.ok(
+    strings.includes('Every build is a public GitHub release with a verifiable sha — install it, or read the code first.'),
+    'the verifiable-release promise is stated'
+  );
+  assert.ok(
+    strings.includes('Import your statement or add your first holding below.'),
+    'the call to action is stated'
+  );
+  assert.ok(strings.includes('Add your first holding'), 'the Portfolio action is offered');
+  assert.ok(
+    strings.includes('Set your monthly income and expenses'),
+    'the Budget action is offered'
+  );
+});
+
+test('Dashboard, first-run card: absent once a holding exists', async () => {
+  resetModules();
+  const db = loadDb();
+  await db.addHolding({
+    ticker: 'OGDC',
+    quantity: 100,
+    avg_buy_price: 200,
+    current_price: 250,
+    last_fetched: null,
+    purchase_date: null,
+  });
+
+  const renderer = renderScreen(DASHBOARD);
+  await flush(renderer);
+  const strings = renderedText(renderer);
+
+  assert.ok(!strings.includes('Start here'), 'the first-run card is gone once the ledger has a holding');
+  assert.ok(
+    !strings.includes('Import your statement or add your first holding below.'),
+    'the call to action does not linger for a returning user'
+  );
+});

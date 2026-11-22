@@ -87,11 +87,14 @@ test('fee grid: the footer is the never-advice law line', () => {
   assert.match(COST_FOOTER, /never tell you to buy or sell/);
 });
 
-test('fee grid: the Costs tab sits immediately after Directory', () => {
-  assert.match(
-    NAV_SOURCE,
-    /<Tab\.Screen name="Directory"[^\n]*\/>\s*<Tab\.Screen name="Costs" component=\{CostScreen\} \/>/
-  );
+test('fee grid: the Costs screen sits behind the More entry on a five-tab bar', () => {
+  const tabScreens = NAV_SOURCE.match(/<Tab\.Screen/g) ?? [];
+  assert.equal(tabScreens.length, 5, 'the bottom bar must keep exactly five tabs');
+  for (const name of ['Dashboard', 'Portfolio', 'CommandCenter', 'Budget', 'Settings']) {
+    assert.match(NAV_SOURCE, new RegExp(`<Tab\\.Screen\\s+name="${name}"`), `${name} is not a bottom tab`);
+  }
+  assert.match(NAV_SOURCE, /<Stack\.Screen name="More" component=\{MoreScreen\}/);
+  assert.match(NAV_SOURCE, /<Stack\.Screen name="Costs" component=\{CostScreen\}/);
   assert.match(NAV_SOURCE, /^\s*Costs: \($/m, 'Costs tab icon is not registered');
 });
 

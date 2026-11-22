@@ -63,6 +63,8 @@ export default function DashboardScreen() {
   const portfolioGain = portfolioValue - portfolioCost;
   const portfolioGainPct = portfolioCost > 0 ? (portfolioGain / portfolioCost) * 100 : 0;
   const importedAssetsValue = assets.reduce((sum, a) => sum + (a.amount_pkr || 0), 0);
+  // First-run means no ledger of any kind yet: no holdings and no imported rows.
+  const isFirstRun = holdings.length === 0 && assets.length === 0;
   const netWorth = portfolioValue + cash + property + importedAssetsValue;
   const savingsRate = totalIncome > 0 ? ((totalIncome - monthlyExpenses) / totalIncome) * 100 : 0;
   const currentSavings = totalIncome - monthlyExpenses;
@@ -118,6 +120,39 @@ export default function DashboardScreen() {
           style={[styles.entryBtn, styles.entryBtnSpaced]}
         />
       </View>
+
+      {isFirstRun && (
+        <Card>
+          <Text style={typography.sectionTitle}>Start here</Text>
+          <Text style={[typography.body, styles.firstRunIntro]}>
+            Rahnuma keeps your PSX holdings, budget and FIRE math on your phone and shows you the arithmetic.
+          </Text>
+          <Text style={styles.firstRunLine}>
+            Your portfolio never leaves your phone — no account, no signup, no cloud.
+          </Text>
+          <Text style={styles.firstRunLine}>
+            Rahnuma will never tell you to buy or sell. It restates your own plan and the price.
+          </Text>
+          <Text style={styles.firstRunLine}>
+            Every build is a public GitHub release with a verifiable sha — install it, or read the code first.
+          </Text>
+          <Text style={[typography.caption, styles.firstRunCta]}>
+            Import your statement or add your first holding below.
+          </Text>
+          <Button
+            label="Add your first holding"
+            onPress={() => navigation.navigate('Portfolio')}
+            variant="secondary"
+            style={styles.firstRunBtn}
+          />
+          <Button
+            label="Set your monthly income and expenses"
+            onPress={() => navigation.navigate('Budget')}
+            variant="secondary"
+            style={styles.firstRunBtn}
+          />
+        </Card>
+      )}
 
       {/* Net Worth */}
       <Card>
@@ -220,4 +255,13 @@ const styles = StyleSheet.create({
   quickBtn: {
     marginBottom: spacing.sm,
   },
+  firstRunIntro: { marginTop: spacing.sm, marginBottom: spacing.md },
+  firstRunLine: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  firstRunCta: { marginBottom: spacing.md },
+  firstRunBtn: { marginTop: spacing.sm },
 });

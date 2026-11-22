@@ -56,6 +56,7 @@ give buy/sell calls is the thing this subreddit will actually argue about — wh
 
 - [ ] Beta APK builds and installs on a clean device.
 - [ ] First-run with no API key: calculators and portfolio work, advisory explains how to add one.
+- [ ] Public/production build is **BYOK-only** — no embedded key in the shipped bundle (the preview APK's embedded free-tier key is documented in README and is extractable).
 - [ ] Add a free Gemini key → advisory answers → shows the persona badge.
 - [ ] Without internet: portfolio, budget and calculators still work; advisory degrades gracefully.
 - [ ] CGT spot-check against a real broker contract note.
